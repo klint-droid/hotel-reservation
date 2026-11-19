@@ -89,7 +89,20 @@ test('PMO Endorsement: Sends Dear PMO/Concierge email to PMO with Guest CC, inli
   assert.ok(attachNames.includes('drivers-license.jpg'));
   assert.ok(attachNames.includes('passport.pdf'));
 
-  // Upgrade helper is idempotent and safe to run on existing workspace
-  const upg = env.ctx.upgradeExistingWorkspace();
-  assert.equal(upg.ok, true);
+  // Re-running runFullSetup() on an existing workspace syncs missing form fields safely without duplicates
+  const form = env.formsRegistry.get(env.scriptPropertiesStore.get('LINKED_FORM_ID'));
+  // Simulate an older Form missing Companion / Other Guest Names
+  form._items = form._items.filter((it) => it.title !== 'Companion / Other Guest Names');
+  const beforeCount = form._items.length;
+
+  const synced = env.ctx.runFullSetup();
+  assert.equal(synced.ok, true);
+  assert.equal(synced.data.registrationForm.created, false);
+  assert.deepEqual(Array.from(synced.data.registrationForm.addedFields), ['Companion / Other Guest Names']);
+  assert.equal(form._items.length, beforeCount + 1);
+  assert.equal(env.triggers.length, 2, 'Triggers must remain deduplicated');
+
+  // Existing settings must NOT be overwritten when re-running runFullSetup()
+  assert.equal(env.ctx.Config.getSettings().unitLocation, 'Unit 3702, Novotel Tower');
+  assert.equal(env.ctx.Config.getSettings().pmoConciergeEmails[0], 'pmo@novoteltower.test');
 });

@@ -345,6 +345,133 @@ var SetupService = (function () {
     });
   }
 
+  /**
+   * Synchronizes all script-creatable fields on a Google Form (both new and existing).
+   * Adds any missing fields without duplicating or removing existing questions.
+   * Also checks whether a manual "Valid ID Upload" File Upload item is present.
+   */
+  function syncFormFields_(form) {
+    var F = Config.FORM_CONFIG;
+    var existingItems = form.getItems ? form.getItems() : [];
+    var existingTitles = {};
+    var hasValidIdUpload = false;
+
+    for (var i = 0; i < existingItems.length; i++) {
+      var title = String(existingItems[i].getTitle() || '').trim().toLowerCase();
+      if (title) {
+        existingTitles[title] = true;
+        if (title.indexOf('valid id') !== -1 || title.indexOf('upload id') !== -1 || title.indexOf('government id') !== -1) {
+          hasValidIdUpload = true;
+        }
+      }
+    }
+
+    var addedFields = [];
+
+    function hasField(fieldTitle) {
+      return Boolean(existingTitles[String(fieldTitle || '').trim().toLowerCase()]);
+    }
+
+    if (!hasField(F.FIELDS.FULL_NAME)) {
+      form.addTextItem()
+        .setTitle(F.FIELDS.FULL_NAME)
+        .setHelpText('Enter your complete first and last name.')
+        .setRequired(true);
+      addedFields.push(F.FIELDS.FULL_NAME);
+    }
+
+    if (!hasField(F.FIELDS.EMAIL_ADDRESS)) {
+      var emailValidation = FormApp.createTextValidation()
+        .requireTextIsEmail()
+        .setHelpText('Please enter a valid email address (e.g., name@example.com).')
+        .build();
+      form.addTextItem()
+        .setTitle(F.FIELDS.EMAIL_ADDRESS)
+        .setHelpText('Your Reservation Endorsement Certificate will be sent here after approval.')
+        .setValidation(emailValidation)
+        .setRequired(true);
+      addedFields.push(F.FIELDS.EMAIL_ADDRESS);
+    }
+
+    if (!hasField(F.FIELDS.CONTACT_NUMBER)) {
+      var phoneValidation = FormApp.createTextValidation()
+        .requireTextMatchesPattern('^[+]?[0-9][0-9\\s\\-()]{6,19}$')
+        .setHelpText('Please enter a valid mobile or telephone number (e.g., 0917 123 4567 or +63 917 123 4567).')
+        .build();
+      form.addTextItem()
+        .setTitle(F.FIELDS.CONTACT_NUMBER)
+        .setValidation(phoneValidation)
+        .setRequired(true);
+      addedFields.push(F.FIELDS.CONTACT_NUMBER);
+    }
+
+    if (!hasField(F.FIELDS.CHECK_IN_DATE)) {
+      form.addDateItem()
+        .setTitle(F.FIELDS.CHECK_IN_DATE)
+        .setHelpText('Must be today or a future date.')
+        .setRequired(true);
+      addedFields.push(F.FIELDS.CHECK_IN_DATE);
+    }
+
+    if (!hasField(F.FIELDS.CHECK_OUT_DATE)) {
+      form.addDateItem()
+        .setTitle(F.FIELDS.CHECK_OUT_DATE)
+        .setHelpText('Must be later than your Check-in Date.')
+        .setRequired(true);
+      addedFields.push(F.FIELDS.CHECK_OUT_DATE);
+    }
+
+    if (!hasField(F.FIELDS.NUMBER_OF_GUESTS)) {
+      var guestsValidation = FormApp.createTextValidation()
+        .requireTextMatchesPattern('^[1-9][0-9]*$')
+        .setHelpText('Please enter a whole number greater than 0.')
+        .build();
+      form.addTextItem()
+        .setTitle(F.FIELDS.NUMBER_OF_GUESTS)
+        .setValidation(guestsValidation)
+        .setRequired(true);
+      addedFields.push(F.FIELDS.NUMBER_OF_GUESTS);
+    }
+
+    if (!hasField(F.FIELDS.NUMBER_OF_ROOMS)) {
+      form.addListItem()
+        .setTitle(F.FIELDS.NUMBER_OF_ROOMS)
+        .setHelpText('Select the number of rooms if applicable.')
+        .setChoiceValues(F.ROOM_OPTIONS.slice())
+        .setRequired(false);
+      addedFields.push(F.FIELDS.NUMBER_OF_ROOMS);
+    }
+
+    if (!hasField(F.FIELDS.COMPANION_GUESTS)) {
+      form.addParagraphTextItem()
+        .setTitle(F.FIELDS.COMPANION_GUESTS)
+        .setHelpText('List the full names of all other guests staying with you (one name per line), if applicable.')
+        .setRequired(false);
+      addedFields.push(F.FIELDS.COMPANION_GUESTS);
+    }
+
+    if (!hasField(F.FIELDS.SPECIAL_REQUESTS)) {
+      form.addParagraphTextItem()
+        .setTitle(F.FIELDS.SPECIAL_REQUESTS)
+        .setHelpText('Optional notes, arrival preferences, or special requests.')
+        .setRequired(false);
+      addedFields.push(F.FIELDS.SPECIAL_REQUESTS);
+    }
+
+    if (!hasField(F.FIELDS.AGREEMENT)) {
+      form.addCheckboxItem()
+        .setTitle(F.FIELDS.AGREEMENT)
+        .setChoiceValues([F.AGREEMENT_LABEL])
+        .setRequired(true);
+      addedFields.push(F.FIELDS.AGREEMENT);
+    }
+
+    return {
+      addedFields: addedFields,
+      hasValidIdUpload: hasValidIdUpload
+    };
+  }
+
   function createRegistrationForm(ss) {
     var spreadsheet = Config.getActiveSpreadsheetOrThrow(ss);
     var props = PropertiesService.getScriptProperties();
@@ -353,11 +480,14 @@ var SetupService = (function () {
     if (existingFormId) {
       try {
         var existingForm = FormApp.openById(existingFormId);
-        return Utils.ok('Existing Staycation Registration Form found.', {
+        var syncResult = syncFormFields_(existingForm);
+        return Utils.ok('Existing Staycation Registration Form synchronized.', {
           formId: existingForm.getId(),
           publishedUrl: existingForm.getPublishedUrl(),
           editUrl: existingForm.getEditUrl(),
-          created: false
+          created: false,
+          addedFields: syncResult.addedFields,
+          hasValidIdUpload: syncResult.hasValidIdUpload
         });
       } catch (e) {
         Logger.log('Previously linked form not accessible; creating a new form.');
@@ -379,79 +509,7 @@ var SetupService = (function () {
       'You will receive an endorsement email once your reservation has been verified and approved.'
     );
 
-    // 1. Full Name
-    form.addTextItem()
-      .setTitle(F.FIELDS.FULL_NAME)
-      .setHelpText('Enter your complete first and last name.')
-      .setRequired(true);
-
-    // 2. Email Address
-    var emailValidation = FormApp.createTextValidation()
-      .requireTextIsEmail()
-      .setHelpText('Please enter a valid email address (e.g., name@example.com).')
-      .build();
-    form.addTextItem()
-      .setTitle(F.FIELDS.EMAIL_ADDRESS)
-      .setHelpText('Your Reservation Endorsement Certificate will be sent here after approval.')
-      .setValidation(emailValidation)
-      .setRequired(true);
-
-    // 3. Contact Number
-    var phoneValidation = FormApp.createTextValidation()
-      .requireTextMatchesPattern('^[+]?[0-9][0-9\\s\\-()]{6,19}$')
-      .setHelpText('Please enter a valid mobile or telephone number (e.g., 0917 123 4567 or +63 917 123 4567).')
-      .build();
-    form.addTextItem()
-      .setTitle(F.FIELDS.CONTACT_NUMBER)
-      .setValidation(phoneValidation)
-      .setRequired(true);
-
-    // 4. Check-in Date
-    form.addDateItem()
-      .setTitle(F.FIELDS.CHECK_IN_DATE)
-      .setHelpText('Must be today or a future date.')
-      .setRequired(true);
-
-    // 5. Check-out Date
-    form.addDateItem()
-      .setTitle(F.FIELDS.CHECK_OUT_DATE)
-      .setHelpText('Must be later than your Check-in Date.')
-      .setRequired(true);
-
-    // 6. Number of Guests (regex enforces positive whole integer >= 1 in Google Forms)
-    var guestsValidation = FormApp.createTextValidation()
-      .requireTextMatchesPattern('^[1-9][0-9]*$')
-      .setHelpText('Please enter a whole number greater than 0.')
-      .build();
-    form.addTextItem()
-      .setTitle(F.FIELDS.NUMBER_OF_GUESTS)
-      .setValidation(guestsValidation)
-      .setRequired(true);
-
-    // 7. Number of Rooms (Dropdown, optional / if applicable)
-    form.addListItem()
-      .setTitle(F.FIELDS.NUMBER_OF_ROOMS)
-      .setHelpText('Select the number of rooms if applicable.')
-      .setChoiceValues(F.ROOM_OPTIONS.slice())
-      .setRequired(false);
-
-    // 8. Companion / Other Guest Names (Paragraph, optional)
-    form.addParagraphTextItem()
-      .setTitle(F.FIELDS.COMPANION_GUESTS)
-      .setHelpText('List the full names of all other guests staying with you (one name per line), if applicable.')
-      .setRequired(false);
-
-    // 9. Special Requests (Paragraph, optional)
-    form.addParagraphTextItem()
-      .setTitle(F.FIELDS.SPECIAL_REQUESTS)
-      .setHelpText('Optional notes, arrival preferences, or special requests.')
-      .setRequired(false);
-
-    // 10. Agreement to House Rules (Checkbox, required)
-    form.addCheckboxItem()
-      .setTitle(F.FIELDS.AGREEMENT)
-      .setChoiceValues([F.AGREEMENT_LABEL])
-      .setRequired(true);
+    var createdSync = syncFormFields_(form);
 
     // Snapshot existing sheet names before linking so we hide the newly created response sheet regardless of suffix
     var existingNames = {};
@@ -486,7 +544,9 @@ var SetupService = (function () {
       formId: form.getId(),
       publishedUrl: form.getPublishedUrl(),
       editUrl: form.getEditUrl(),
-      created: true
+      created: true,
+      addedFields: createdSync.addedFields,
+      hasValidIdUpload: createdSync.hasValidIdUpload
     });
   }
 
@@ -603,7 +663,9 @@ var SetupService = (function () {
 
     var detailRows = [
       ['Reservation Reference:', P.REFERENCE_NUMBER],
-      ['Guest Name:', P.GUEST_NAME],
+      ['Unit / Property:', P.UNIT_LOCATION],
+      ['Primary Guest Name:', P.GUEST_NAME],
+      ['Companion Guests:', P.COMPANION_GUESTS],
       ['Check-in Date:', P.CHECK_IN_DATE],
       ['Check-in Time:', P.CHECK_IN_TIME],
       ['Check-out Date:', P.CHECK_OUT_DATE],
@@ -721,6 +783,22 @@ var SetupService = (function () {
     var formRes = createRegistrationForm(spreadsheet);
     var triggerRes = installTriggers(spreadsheet);
 
+    var addedFields = (formRes.data && formRes.data.addedFields) || [];
+    var hasValidId = Boolean(formRes.data && formRes.data.hasValidIdUpload);
+
+    Logger.log('=== Staycation Setup / Upgrade Summary ===');
+    Logger.log('Spreadsheet: ' + sheetRes.data.spreadsheetUrl);
+    Logger.log('Google Form (Public): ' + formRes.data.publishedUrl);
+    Logger.log('Google Form (Edit): ' + formRes.data.editUrl);
+    Logger.log('Form Fields Added: ' + (addedFields.length > 0 ? addedFields.join(', ') : 'All script-managed fields already up to date'));
+    if (!hasValidId) {
+      Logger.log('ACTION NEEDED (10 sec): Open the Form Edit URL above -> "+" -> File upload -> Title it "Valid ID Upload" (Google Apps Script cannot create File Upload questions via API).');
+    } else {
+      Logger.log('Valid ID Upload field: Detected on form.');
+    }
+    Logger.log('Endorsement Template Doc: ' + templateRes.data.templateUrl);
+    Logger.log('Private PDF Folder: ' + folderRes.data.folderUrl);
+
     if (typeof ActivityLogService !== 'undefined' && ActivityLogService.logActivity) {
       ActivityLogService.logActivity({
         reservationId: 'SYSTEM',
@@ -728,64 +806,30 @@ var SetupService = (function () {
         administrator: (typeof SecurityService !== 'undefined' ? SecurityService.getCurrentAdminEmail() : '') || 'SYSTEM_SETUP',
         action: Config.ACTIVITY_ACTIONS.SYSTEM_SETUP,
         previousValue: '',
-        newValue: 'INITIALIZED',
-        remarks: 'Workspace initialized (4 sheets, private output folder, Docs template, public Form, triggers).'
+        newValue: 'SYNCED',
+        remarks: 'Setup synced all 4 sheets, private output folder, Docs template, Form (added: ' +
+          (addedFields.length ? addedFields.join(', ') : 'none') + '), and triggers.'
       }, spreadsheet);
     }
 
-    return Utils.ok('Staycation Reservation System setup complete.', {
+    return Utils.ok('Staycation Reservation System setup & sync complete.', {
       spreadsheet: sheetRes.data,
       outputFolder: folderRes.data,
       templateDoc: templateRes.data,
       registrationForm: formRes.data,
-      triggers: triggerRes.data
+      triggers: triggerRes.data,
+      manualFormStep: hasValidId
+        ? ''
+        : 'Open the Google Form editor -> "+" -> File upload -> title it "Valid ID Upload" (Allow Image & PDF, max 5 files).'
     });
   }
 
   /**
-   * Non-destructive upgrade helper for existing deployments:
-   * - Adds Columns U (Companion Guests) and V (Valid ID File IDs) to Reservations
-   * - Adds UNIT_LOCATION and PMO_CONCIERGE_EMAIL rows to Settings
-   * - Adds the optional "Companion / Other Guest Names" field to the existing Google Form
-   *   (Note: Google Forms "File upload" for Valid ID Upload must be added once in the Form editor.)
+   * Alias to runFullSetup() — safely upgrades existing sheets, settings, form fields,
+   * folder permissions, and installable triggers in one step without losing data.
    */
   function upgradeExistingWorkspace(ss) {
-    var spreadsheet = Config.getActiveSpreadsheetOrThrow(ss);
-    initializeSpreadsheet(spreadsheet);
-
-    var formUpdated = false;
-    var formEditUrl = '';
-    var existingFormId = PropertiesService.getScriptProperties().getProperty(Config.PROPERTY_PREFIXES.FORM_ID);
-    if (existingFormId) {
-      try {
-        var form = FormApp.openById(existingFormId);
-        formEditUrl = form.getEditUrl();
-        var items = form.getItems ? form.getItems() : [];
-        var hasCompanions = false;
-        var targetTitle = Config.FORM_CONFIG.FIELDS.COMPANION_GUESTS.toLowerCase();
-        for (var i = 0; i < items.length; i++) {
-          if (String(items[i].getTitle() || '').trim().toLowerCase() === targetTitle) {
-            hasCompanions = true;
-            break;
-          }
-        }
-        if (!hasCompanions) {
-          form.addParagraphTextItem()
-            .setTitle(Config.FORM_CONFIG.FIELDS.COMPANION_GUESTS)
-            .setHelpText('List the full names of all other guests staying with you (one name per line), if applicable.')
-            .setRequired(false);
-          formUpdated = true;
-        }
-      } catch (formErr) {
-        Logger.log('Note: Could not update linked Google Form automatically: ' + formErr);
-      }
-    }
-
-    return Utils.ok('Workspace upgraded for PMO/Concierge endorsements & Valid ID uploads.', {
-      formUpdated: formUpdated,
-      formEditUrl: formEditUrl,
-      manualFormStep: 'In the Google Form editor, click "+" -> File upload -> title it "Valid ID Upload" (Allow Image & PDF, max 5 files).'
-    });
+    return runFullSetup(ss);
   }
 
   return Object.freeze({
