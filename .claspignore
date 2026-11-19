@@ -1,3 +1,10 @@
-**/**
-!StaycationReservationSystem/**
-!StaycationReservationSystem/dialogs/**
+# clasp rootDir is ./StaycationReservationSystem (contains only Apps Script runtime files).
+# Exclude non-runtime files safely across clasp v2 and v3.
+.git/**
+node_modules/**
+docs/**
+tests/**
+**/*.md
+**/*.test.js
+**/.DS_Store
+**/Thumbs.db
