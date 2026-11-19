@@ -341,6 +341,114 @@ function apiSaveSettings(updates) {
   }
 }
 
+/**
+ * Google Apps Script Web App entrypoint for the private Admin Portal.
+ * Enforces fail-closed administrator authorization before rendering any guest data.
+ */
+function doGet() {
+  try {
+    var adminEmail = SecurityService.assertAuthorizedAdmin('OPEN_WEB_PORTAL');
+    var tpl = loadDialogTemplate_('AdminPortal');
+    tpl.bootstrapJson = Utils.toSafeScriptJson(buildPortalPayload_(adminEmail));
+    return tpl.evaluate()
+      .setTitle('Staycation Admin Portal')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
+  } catch (err) {
+    var safeMsg = Utils.escapeHtml(err && err.message ? err.message : 'Access denied.');
+    var html = [
+      '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Access Denied</title>',
+      '<style>body{font-family:Arial,sans-serif;background:#F5EFE6;color:#2B2D2F;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;}',
+      '.box{background:#fff;border:1px solid #DFD8CC;border-top:4px solid #B02A37;border-radius:10px;padding:28px 32px;max-width:480px;box-shadow:0 6px 24px rgba(0,0,0,.08);}',
+      'h1{margin:0 0 10px;font-family:Georgia,serif;color:#B02A37;font-size:22px;}p{margin:0 0 10px;line-height:1.5;font-size:14px;}</style></head>',
+      '<body><div class="box"><h1>Access Restricted</h1><p>' + safeMsg + '</p>',
+      '<p style="color:#5C636A;font-size:12px;">Sign in with an authorized Staycation Administrator Google account.</p></div></body></html>'
+    ].join('');
+    return HtmlService.createHtmlOutput(html).setTitle('Access Restricted');
+  }
+}
+
+function buildPortalPayload_(adminEmail) {
+  var ss = Config.getActiveSpreadsheetOrThrow();
+  var settings = Config.getSettings(ss);
+  var metrics = DashboardService.getDashboardMetrics(ss);
+  var allRecords = ReservationService.getAllReservations(ss);
+
+  // Return newest reservations first for admin workflow ergonomics
+  var reservations = [];
+  for (var i = allRecords.length - 1; i >= 0; i--) {
+    var rec = Object.assign({}, allRecords[i].reservation);
+    // Validate PDF URL server-side before returning to the portal UI
+    if (rec.pdfFileUrl && !Utils.isValidGoogleDriveUrl(rec.pdfFileUrl)) {
+      rec.pdfFileUrl = '';
+    }
+    reservations.push(rec);
+  }
+
+  var emailLogs = [];
+  try {
+    emailLogs = EmailLogService.getEmailLogs(200, null, ss);
+  } catch (e1) {
+    Logger.log('Note: Could not read Email Logs for portal: ' + e1);
+  }
+
+  var activityLogs = [];
+  try {
+    activityLogs = ActivityLogService.getRecentActivities(200, null, ss);
+  } catch (e2) {
+    Logger.log('Note: Could not read Activity Logs for portal: ' + e2);
+  }
+
+  var formUrl = '';
+  try {
+    var formId = PropertiesService.getScriptProperties().getProperty(Config.PROPERTY_PREFIXES.FORM_ID);
+    if (formId) {
+      formUrl = FormApp.openById(formId).getPublishedUrl();
+    }
+  } catch (e3) {
+    formUrl = '';
+  }
+
+  return {
+    adminEmail: adminEmail,
+    staycationName: Config.isUnconfiguredValue(settings.staycationName)
+      ? Config.APP_NAME
+      : settings.staycationName,
+    timezone: settings.timezone,
+    spreadsheetUrl: ss.getUrl(),
+    publicFormUrl: formUrl,
+    metrics: metrics,
+    reservations: reservations,
+    emailLogs: emailLogs,
+    activityLogs: activityLogs,
+    settingsRaw: settings.raw
+  };
+}
+
+function apiGetPortalBootstrap() {
+  try {
+    var adminEmail = SecurityService.assertAuthorizedAdmin('VIEW_WEB_PORTAL');
+    return Utils.ok('Portal data refreshed.', buildPortalPayload_(adminEmail));
+  } catch (err) {
+    return Utils.errorToResult(err, 'Failed to load admin portal data.');
+  }
+}
+
+function apiApproveAndEndorse(reservationId, remarks) {
+  try {
+    return ApprovalService.approveAndEndorseReservation(reservationId, remarks);
+  } catch (err) {
+    return Utils.errorToResult(err, 'Failed to complete 1-click approve and endorsement.');
+  }
+}
+
+function apiCompleteApprovedEndorsement(reservationId, allowFailedRetry) {
+  try {
+    return ApprovalService.completeApprovedEndorsement(reservationId, allowFailedRetry);
+  } catch (err) {
+    return Utils.errorToResult(err, 'Failed to generate PDF and send endorsement email.');
+  }
+}
+
 function apiGetDashboardData() {
   try {
     SecurityService.assertAuthorizedAdmin('VIEW_DASHBOARD');

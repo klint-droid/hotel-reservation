@@ -980,16 +980,19 @@ function createGasMockRuntime(options = {}) {
       }
     },
     HtmlService: {
+      XFrameOptionsMode: { DEFAULT: 'DEFAULT', ALLOWALL: 'ALLOWALL' },
       createHtmlOutput: (html) => {
         const obj = {
           _content: String(html || ''),
           _width: 600,
           _height: 400,
           _title: '',
+          _xFrameMode: 'DEFAULT',
           getContent: () => obj._content,
           setWidth: (w) => { obj._width = w; return obj; },
           setHeight: (h) => { obj._height = h; return obj; },
-          setTitle: (t) => { obj._title = t; return obj; }
+          setTitle: (t) => { obj._title = t; return obj; },
+          setXFrameOptionsMode: (m) => { obj._xFrameMode = m; return obj; }
         };
         return obj;
       },

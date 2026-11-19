@@ -338,9 +338,138 @@ var ApprovalService = (function () {
     });
   }
 
+  /**
+   * 1-Click Endorsement Pipeline (explicitly triggered after admin confirmation):
+   *   1. Approve PENDING reservation (ApprovalService.approveReservation)
+   *   2. Generate private Endorsement PDF (PdfService.generateEndorsementPdf)
+   *   3. Deliver HTML Endorsement Email + PDF attachment (EmailService.sendEndorsementEmail)
+   *
+   * Never runs automatically on guest form submission. Preserves partial progress
+   * cleanly if Step 2 or Step 3 fails so the administrator can recover in 1 click.
+   */
+  function approveAndEndorseReservation(reservationId, remarks, ss) {
+    var spreadsheet = Config.getActiveSpreadsheetOrThrow(ss);
+    SecurityService.assertAuthorizedAdmin('APPROVE_AND_ENDORSE', spreadsheet);
+
+    var steps = {
+      approved: false,
+      pdfGenerated: false,
+      emailSent: false
+    };
+
+    // Step 1: Approve PENDING reservation
+    var approveRes = approveReservation(reservationId, remarks, spreadsheet);
+    if (!approveRes.ok) {
+      return Utils.fail(
+        approveRes.code,
+        'Approval failed: ' + approveRes.message,
+        approveRes.errors,
+        { steps: steps }
+      );
+    }
+    steps.approved = true;
+
+    // Step 2: Generate private Endorsement PDF
+    var pdfRes = PdfService.generateEndorsementPdf(reservationId, spreadsheet);
+    if (!pdfRes.ok) {
+      return Utils.fail(
+        pdfRes.code,
+        'Reservation was APPROVED, but PDF generation failed: ' + pdfRes.message,
+        pdfRes.errors,
+        {
+          steps: steps,
+          reservation: ReservationService.getReservationById(reservationId, spreadsheet).reservation
+        }
+      );
+    }
+    steps.pdfGenerated = true;
+
+    // Step 3: Send Endorsement Email with PDF attachment
+    var emailRes = EmailService.sendEndorsementEmail(reservationId, { allowFailedRetry: false }, spreadsheet);
+    if (!emailRes.ok) {
+      return Utils.fail(
+        emailRes.code,
+        'Reservation was APPROVED and PDF was generated, but email sending failed: ' + emailRes.message,
+        emailRes.errors,
+        {
+          steps: steps,
+          pdf: pdfRes.data,
+          reservation: ReservationService.getReservationById(reservationId, spreadsheet).reservation
+        }
+      );
+    }
+    steps.emailSent = true;
+
+    return Utils.ok(
+      'Reservation ' + approveRes.data.referenceNumber + ' approved, PDF generated, and endorsement email sent to ' +
+      approveRes.data.emailAddress + '!',
+      {
+        steps: steps,
+        reservation: emailRes.data.reservation,
+        pdf: pdfRes.data,
+        email: {
+          emailLogId: emailRes.data.emailLogId,
+          sentAt: emailRes.data.sentAt,
+          attachmentName: emailRes.data.attachmentName
+        }
+      }
+    );
+  }
+
+  /**
+   * 1-Click Recovery/Completion for an already APPROVED reservation:
+   * generates PDF (if missing) and sends the endorsement email.
+   */
+  function completeApprovedEndorsement(reservationId, allowFailedRetry, ss) {
+    var spreadsheet = Config.getActiveSpreadsheetOrThrow(ss);
+    SecurityService.assertAuthorizedAdmin('COMPLETE_ENDORSEMENT', spreadsheet);
+
+    var found = ReservationService.getReservationById(reservationId, spreadsheet);
+    if (!found) {
+      return Utils.fail(Config.ERROR_CODES.NOT_FOUND, 'Reservation "' + reservationId + '" was not found.');
+    }
+    var res = found.reservation;
+    if (res.approvalStatus !== Config.APPROVAL_STATUS.APPROVED) {
+      return Utils.fail(
+        Config.ERROR_CODES.INVALID_STATE,
+        'Reservation must be APPROVED first. Current status: ' + res.approvalStatus
+      );
+    }
+
+    var pdfData = null;
+    if (!res.pdfFileId) {
+      var pdfRes = PdfService.generateEndorsementPdf(reservationId, spreadsheet);
+      if (!pdfRes.ok) {
+        return pdfRes;
+      }
+      pdfData = pdfRes.data;
+    }
+
+    var emailRes = EmailService.sendEndorsementEmail(
+      reservationId,
+      { allowFailedRetry: Boolean(allowFailedRetry) },
+      spreadsheet
+    );
+    if (!emailRes.ok) {
+      return emailRes;
+    }
+
+    return Utils.ok(emailRes.message, {
+      reservation: emailRes.data.reservation,
+      pdf: pdfData,
+      email: {
+        emailLogId: emailRes.data.emailLogId,
+        sentAt: emailRes.data.sentAt,
+        attachmentName: emailRes.data.attachmentName
+      }
+    });
+  }
+
   return Object.freeze({
     approveReservation: approveReservation,
     rejectReservation: rejectReservation,
+    approveAndEndorseReservation: approveAndEndorseReservation,
+    completeApprovedEndorsement: completeApprovedEndorsement,
     revokeApprovalAndInvalidatePdf: revokeApprovalAndInvalidatePdf,
     handleReservationEdit: handleReservationEdit
   });

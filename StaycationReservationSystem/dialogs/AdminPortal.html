@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <base target="_top">
+  <title>Staycation Admin Portal</title>
+  <style>
+    :root {
+      --green-900: #143326;
+      --green-800: #1B4332;
+      --green-700: #2D6A4F;
+      --green-100: #E6F2EC;
+      --gold: #C5A059;
+      --gold-soft: #F7F1E3;
+      --beige: #F5EFE6;
+      --bg: #F8F5F0;
+      --surface: #FFFFFF;
+      --text: #222629;
+      --muted: #5F676E;
+      --border: #E5DFD5;
+      --danger: #B02A37;
+      --danger-soft: #FBE9EB;
+      --warn-bg: #FFF3CD;
+      --warn-fg: #856404;
+      --ok-bg: #D4EDDA;
+      --ok-fg: #155724;
+      --gray-bg: #E9ECEF;
+      --gray-fg: #495057;
+      --shadow: 0 2px 10px rgba(27, 67, 50, 0.06);
+      --shadow-lg: 0 14px 40px rgba(20, 51, 38, 0.22);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13.5px;
+      line-height: 1.5;
+    }
+
+    /* Top Navigation Bar */
+    .topbar {
+      background: linear-gradient(135deg, var(--green-900), var(--green-800));
+      color: #FFFFFF;
+      border-bottom: 3px solid var(--gold);
+      padding: 16px 28px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(197, 160, 89, 0.18);
+      border: 1.5px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: Georgia, serif;
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+    .brand h1 {
+      margin: 0;
+      font-family: Georgia, serif;
+      font-size: 20px;
+      letter-spacing: 0.3px;
+    }
+    .brand .subtitle {
+      font-size: 11.5px;
+      color: #D2E0D8;
+      margin-top: 1px;
+    }
+    .top-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .admin-pill {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      color: #F1F6F3;
+    }
+    .btn {
+      border: none;
+      border-radius: 7px;
+      padding: 8px 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-primary { background: var(--green-800); color: #FFFFFF; }
+    .btn-primary:hover:not(:disabled) { background: var(--green-700); }
+    .btn-gold { background: var(--gold); color: var(--green-900); }
+    .btn-gold:hover:not(:disabled) { background: #D3B06C; }
+    .btn-ghost-light {
+      background: rgba(255, 255, 255, 0.14);
+      color: #FFFFFF;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+    }
+    .btn-ghost-light:hover:not(:disabled) { background: rgba(255, 255, 255, 0.22); }
+    .btn-outline {
+      background: #FFFFFF;
+      color: var(--green-800);
+      border: 1px solid #C9C1B5;
+    }
+    .btn-outline:hover:not(:disabled) { background: var(--beige); }
+    .btn-danger-outline {
+      background: #FFFFFF;
+      color: var(--danger);
+      border: 1px solid #E5B4BA;
+    }
+    .btn-danger-outline:hover:not(:disabled) { background: var(--danger-soft); }
+    .btn-danger { background: var(--danger); color: #FFFFFF; }
+    .btn-danger:hover:not(:disabled) { background: #96222D; }
+    .btn-sm { padding: 5px 10px; font-size: 11.5px; border-radius: 6px; }
+
+    /* Main Container */
+    .container {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 20px 24px 48px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 20px;
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      padding: 10px 18px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .tab-btn:hover { color: var(--green-800); }
+    .tab-btn.active {
+      color: var(--green-800);
+      border-bottom-color: var(--green-800);
+    }
+    .tab-count {
+      background: var(--warn-bg);
+      color: var(--warn-fg);
+      border-radius: 10px;
+      padding: 1px 7px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    /* Toast Banner */
+    .toast-area { margin-bottom: 16px; }
+    .toast {
+      padding: 12px 16px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      font-weight: 500;
+      box-shadow: var(--shadow);
+    }
+    .toast-ok { background: var(--ok-bg); color: var(--ok-fg); border: 1px solid #A3CFBB; }
+    .toast-err { background: var(--danger-soft); color: #721C24; border: 1px solid #F1AEB5; }
+    .toast-info { background: var(--gold-soft); color: #6B4F10; border: 1px solid #E5D09D; }
+    .toast-close {
+      background: transparent;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      color: inherit;
+      padding: 0 4px;
+    }
+
+    /* KPI Strip */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--green-800);
+      border-radius: 10px;
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(27, 67, 50, 0.1); }
+    .kpi-card.warn { border-top-color: #D4A017; }
+    .kpi-card.ok { border-top-color: #198754; }
+    .kpi-card.err { border-top-color: var(--danger); }
+    .kpi-card.gold { border-top-color: var(--gold); }
+    .kpi-num { font-size: 26px; font-weight: 700; color: var(--green-800); line-height: 1.15; }
+    .kpi-lbl { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.45px; margin-top: 4px; }
+
+    /* Panel / Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+    .card-header {
+      padding: 14px 18px;
+      background: #FCFBF8;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .card-header h2 {
+      margin: 0;
+      font-family: Georgia, serif;
+      font-size: 16px;
+      color: var(--green-800);
+    }
+
+    /* Filter Toolbar */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      flex: 1;
+      justify-content: flex-end;
+    }
+    .search-input {
+      min-width: 240px;
+      padding: 8px 12px;
+      border: 1px solid #CEC6B9;
+      border-radius: 7px;
+      font-size: 13px;
+      background: #FFFFFF;
+    }
+    .pill-group { display: flex; flex-wrap: wrap; gap: 5px; }
+    .pill {
+      background: var(--beige);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .pill.active {
+      background: var(--green-800);
+      color: #FFFFFF;
+      border-color: var(--green-800);
+    }
+
+    /* Tables */
+    .table-wrap { width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td {
+      padding: 11px 14px;
+      text-align: left;
+      border-bottom: 1px solid #EFEAE1;
+      vertical-align: middle;
+    }
+    th {
+      background: var(--beige);
+      color: var(--green-800);
+      font-weight: 700;
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+    }
+    tbody tr:hover { background: #FAF8F4; }
+    .cell-main { font-weight: 600; color: var(--text); }
+    .cell-sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+    .ref-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 700; color: var(--green-800); }
+    .flag-note {
+      margin-top: 4px;
+      font-size: 11px;
+      color: #856404;
+      background: var(--warn-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+    .err-note {
+      margin-top: 4px;
+      font-size: 11px;
+      color: #721C24;
+      background: var(--danger-soft);
+      padding: 2px 6px;
+      border-radius: 4px;
+      max-width: 240px;
+      word-break: break-word;
+    }
+
+    /* Status Badges */
+    .badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.35px;
+      white-space: nowrap;
+    }
+    .badge-PENDING { background: var(--warn-bg); color: var(--warn-fg); }
+    .badge-APPROVED, .badge-SENT { background: var(--ok-bg); color: var(--ok-fg); }
+    .badge-REJECTED, .badge-FAILED { background: var(--danger-soft); color: #721C24; }
+    .badge-NOT_SENT { background: var(--gray-bg); color: var(--gray-fg); }
+    .action-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    /* Settings Grid */
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 18px;
+    }
+    @media (max-width: 900px) {
+      .settings-grid { grid-template-columns: 1fr; }
+    }
+    .card-body { padding: 18px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 640px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+    .field { margin-bottom: 12px; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { display: block; font-weight: 600; font-size: 12px; margin-bottom: 4px; color: var(--green-900); }
+    .field input, .field textarea {
+      width: 100%;
+      padding: 8px 11px;
+      border: 1px solid #CFC7BA;
+      border-radius: 7px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .health-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid #EFEAE1;
+    }
+    .health-item:last-child { border-bottom: none; }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 36, 26, 0.52);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 100;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: #FFFFFF;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 580px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-lg);
+      border-top: 4px solid var(--green-800);
+    }
+    .modal.danger { border-top-color: var(--danger); }
+    .modal-head {
+      padding: 18px 22px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-head h3 {
+      margin: 0;
+      font-family: Georgia, serif;
+      font-size: 18px;
+      color: var(--green-800);
+    }
+    .modal.danger .modal-head h3 { color: var(--danger); }
+    .modal-body { padding: 18px 22px; }
+    .modal-foot {
+      padding: 14px 22px;
+      background: #FAF8F4;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .pipeline-banner {
+      background: var(--green-100);
+      border: 1px solid #B7DEC8;
+      color: var(--green-900);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12.5px;
+      margin-bottom: 14px;
+    }
+    .summary-box {
+      background: var(--beige);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 14px;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      row-gap: 6px;
+      column-gap: 10px;
+      font-size: 13px;
+    }
+    .summary-lbl { font-weight: 600; color: var(--muted); }
+    .hidden { display: none !important; }
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      border-top-color: #FFFFFF;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">S</div>
+      <div>
+        <h1 id="portalTitle">Staycation Admin Portal</h1>
+        <div class="subtitle" id="portalSubtitle">Reservation Verification &amp; 1-Click Endorsement Console</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span class="admin-pill" id="adminEmailBadge"></span>
+      <a id="openSheetLink" class="btn btn-ghost-light hidden" target="_blank" rel="noopener noreferrer">Open Google Sheet</a>
+      <button id="copyFormBtn" class="btn btn-gold hidden" type="button">Copy Guest Form Link</button>
+      <button id="refreshBtn" class="btn btn-ghost-light" type="button">Refresh</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="toastArea" class="toast-area"></div>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab-btn active" data-tab="reservations" type="button">
+        Reservations <span id="pendingTabBadge" class="tab-count">0</span>
+      </button>
+      <button class="tab-btn" data-tab="emailLogs" type="button">Email Logs</button>
+      <button class="tab-btn" data-tab="activityLogs" type="button">Activity Logs</button>
+      <button class="tab-btn" data-tab="settings" type="button">Settings &amp; Health</button>
+    </nav>
+
+    <!-- TAB 1: RESERVATIONS -->
+    <section id="tab-reservations">
+      <div class="kpi-grid" id="kpiGrid"></div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>Guest Reservations</h2>
+          <div class="toolbar">
+            <input id="searchInput" class="search-input" type="search" placeholder="Search reference, guest name, email, phone...">
+            <div class="pill-group" id="statusPills">
+              <button class="pill active" data-filter="ALL" type="button">All</button>
+              <button class="pill" data-filter="PENDING" type="button">Pending</button>
+              <button class="pill" data-filter="APPROVED" type="button">Approved</button>
+              <button class="pill" data-filter="SENT" type="button">Sent</button>
+              <button class="pill" data-filter="FAILED" type="button">Failed</button>
+              <button class="pill" data-filter="REJECTED" type="button">Rejected</button>
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Reference</th>
+                <th>Guest</th>
+                <th>Stay Dates</th>
+                <th>Party</th>
+                <th>Approval</th>
+                <th>Email</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="reservationsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: EMAIL LOGS -->
+    <section id="tab-emailLogs" class="hidden">
+      <div class="card">
+        <div class="card-header">
+          <h2>Endorsement Email Delivery Logs</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Reference</th>
+                <th>Recipient</th>
+                <th>Subject</th>
+                <th>Status</th>
+                <th>Attempted</th>
+                <th>Sent At</th>
+                <th>Admin / Error</th>
+              </tr>
+            </thead>
+            <tbody id="emailLogsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: ACTIVITY LOGS -->
+    <section id="tab-activityLogs" class="hidden">
+      <div class="card">
+        <div class="card-header">
+          <h2>Administrator &amp; System Activity Logs</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Reference</th>
+                <th>Action</th>
+                <th>Administrator</th>
+                <th>Change</th>
+                <th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody id="activityLogsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: SETTINGS & HEALTH -->
+    <section id="tab-settings" class="hidden">
+      <div class="settings-grid">
+        <div class="card">
+          <div class="card-header"><h2>Staycation &amp; Workspace Settings</h2></div>
+          <div class="card-body">
+            <form id="portalSettingsForm">
+              <div class="form-grid">
+                <div class="field full">
+                  <label for="S_STAYCATION_NAME">Staycation Name *</label>
+                  <input id="S_STAYCATION_NAME" type="text" required>
+                </div>
+                <div class="field">
+                  <label for="S_STAYCATION_CONTACT_NUMBER">Contact Number *</label>
+                  <input id="S_STAYCATION_CONTACT_NUMBER" type="text" required>
+                </div>
+                <div class="field">
+                  <label for="S_STAYCATION_EMAIL_ADDRESS">Staycation Email *</label>
+                  <input id="S_STAYCATION_EMAIL_ADDRESS" type="email" required>
+                </div>
+                <div class="field">
+                  <label for="S_STAYCATION_FACEBOOK_PAGE">Facebook Page</label>
+                  <input id="S_STAYCATION_FACEBOOK_PAGE" type="text">
+                </div>
+                <div class="field">
+                  <label for="S_STAYCATION_LOGO_URL">Logo Drive ID / HTTPS URL</label>
+                  <input id="S_STAYCATION_LOGO_URL" type="text">
+                </div>
+                <div class="field">
+                  <label for="S_CHECK_IN_TIME">Check-in Time *</label>
+                  <input id="S_CHECK_IN_TIME" type="text" required>
+                </div>
+                <div class="field">
+                  <label for="S_CHECK_OUT_TIME">Check-out Time *</label>
+                  <input id="S_CHECK_OUT_TIME" type="text" required>
+                </div>
+                <div class="field full">
+                  <label for="S_DOCS_TEMPLATE_ID">Google Docs Endorsement Template ID *</label>
+                  <input id="S_DOCS_TEMPLATE_ID" type="text" required>
+                </div>
+                <div class="field full">
+                  <label for="S_DRIVE_OUTPUT_FOLDER_ID">Private Drive Output Folder ID *</label>
+                  <input id="S_DRIVE_OUTPUT_FOLDER_ID" type="text" required>
+                </div>
+                <div class="field">
+                  <label for="S_ADMINISTRATOR_EMAIL">Authorized Admin Email(s) *</label>
+                  <input id="S_ADMINISTRATOR_EMAIL" type="text" required>
+                </div>
+                <div class="field">
+                  <label for="S_TIMEZONE">Timezone *</label>
+                  <input id="S_TIMEZONE" type="text" required>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+                <button id="saveSettingsBtn" class="btn btn-primary" type="submit">Save Settings</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h2>Workspace Health Diagnostics</h2></div>
+          <div class="card-body" id="portalHealthList"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- REUSABLE MODAL -->
+  <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div id="modalBox" class="modal">
+      <div class="modal-head">
+        <h3 id="modalTitle"></h3>
+        <button id="modalCloseX" class="toast-close" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+      <div id="modalFoot" class="modal-foot"></div>
+    </div>
+  </div>
+
+  <script>
+    var STATE = <?!= bootstrapJson ?>;
+    var activeFilter = 'ALL';
+    var searchTerm = '';
+    var busy = false;
+
+    var SETTINGS_KEYS = [
+      'STAYCATION_NAME',
+      'STAYCATION_LOGO_URL',
+      'STAYCATION_CONTACT_NUMBER',
+      'STAYCATION_EMAIL_ADDRESS',
+      'STAYCATION_FACEBOOK_PAGE',
+      'CHECK_IN_TIME',
+      'CHECK_OUT_TIME',
+      'DOCS_TEMPLATE_ID',
+      'DRIVE_OUTPUT_FOLDER_ID',
+      'ADMINISTRATOR_EMAIL',
+      'TIMEZONE'
+    ];
+
+    function el(tag, className, text) {
+      var node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined && text !== null) node.textContent = String(text);
+      return node;
+    }
+
+    function isSafeGoogleUrl(url) {
+      return typeof url === 'string' && /^https:\/\/(drive|docs)\.google\.com\//i.test(url.trim());
+    }
+
+    function makeBadge(status) {
+      return el('span', 'badge badge-' + String(status || 'NOT_SENT'), status || 'N/A');
+    }
+
+    function showToast(message, type, extraLinkUrl, extraLinkText) {
+      var area = document.getElementById('toastArea');
+      area.textContent = '';
+      var box = el('div', 'toast toast-' + (type || 'info'));
+      var left = el('div');
+      left.appendChild(el('span', '', message));
+      if (extraLinkUrl && isSafeGoogleUrl(extraLinkUrl)) {
+        left.appendChild(document.createTextNode(' '));
+        var a = el('a', '', extraLinkText || 'Open PDF');
+        a.href = extraLinkUrl.trim();
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.style.color = 'inherit';
+        a.style.fontWeight = '700';
+        left.appendChild(a);
+      }
+      var closeBtn = el('button', 'toast-close', '\u00D7');
+      closeBtn.type = 'button';
+      closeBtn.onclick = function () { area.textContent = ''; };
+      box.appendChild(left);
+      box.appendChild(closeBtn);
+      area.appendChild(box);
+    }
+
+    function renderHeader() {
+      document.getElementById('portalTitle').textContent = STATE.staycationName || 'Staycation Admin Portal';
+      document.getElementById('portalSubtitle').textContent =
+        'Admin Portal \u2022 Timezone: ' + (STATE.timezone || 'Asia/Manila');
+      document.getElementById('adminEmailBadge').textContent = STATE.adminEmail || 'Authorized Admin';
+
+      var sheetLink = document.getElementById('openSheetLink');
+      if (isSafeGoogleUrl(STATE.spreadsheetUrl)) {
+        sheetLink.href = STATE.spreadsheetUrl;
+        sheetLink.classList.remove('hidden');
+      }
+
+      var copyFormBtn = document.getElementById('copyFormBtn');
+      if (isSafeGoogleUrl(STATE.publicFormUrl)) {
+        copyFormBtn.classList.remove('hidden');
+        copyFormBtn.onclick = function () {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(STATE.publicFormUrl).then(function () {
+              showToast('Public Guest Registration Form link copied to clipboard!', 'ok');
+            }, function () {
+              window.prompt('Copy your public Guest Registration Form link:', STATE.publicFormUrl);
+            });
+          } else {
+            window.prompt('Copy your public Guest Registration Form link:', STATE.publicFormUrl);
+          }
+        };
+      }
+    }
+
+    function renderKpis() {
+      var counts = (STATE.metrics && STATE.metrics.counts) || {};
+      var quota = STATE.metrics && STATE.metrics.health ? STATE.metrics.health.remainingDailyQuota : -1;
+      document.getElementById('pendingTabBadge').textContent = String(counts.pending || 0);
+
+      var grid = document.getElementById('kpiGrid');
+      grid.textContent = '';
+
+      var cards = [
+        { num: counts.total || 0, lbl: 'Total Bookings', cls: '', filter: 'ALL' },
+        { num: counts.pending || 0, lbl: 'Pending Review', cls: 'warn', filter: 'PENDING' },
+        { num: counts.approved || 0, lbl: 'Approved', cls: 'ok', filter: 'APPROVED' },
+        { num: counts.emailSent || 0, lbl: 'Endorsements Sent', cls: 'ok', filter: 'SENT' },
+        { num: counts.emailFailed || 0, lbl: 'Email Failed', cls: 'err', filter: 'FAILED' },
+        { num: quota >= 0 ? quota : 'N/A', lbl: 'Daily Gmail Quota', cls: 'gold', filter: null }
+      ];
+
+      cards.forEach(function (c) {
+        var card = el('div', 'kpi-card ' + c.cls);
+        card.appendChild(el('div', 'kpi-num', c.num));
+        card.appendChild(el('div', 'kpi-lbl', c.lbl));
+        if (c.filter) {
+          card.onclick = function () {
+            setFilter(c.filter);
+          };
+        }
+        grid.appendChild(card);
+      });
+    }
+
+    function setFilter(filter) {
+      activeFilter = filter;
+      var pills = document.querySelectorAll('#statusPills .pill');
+      pills.forEach(function (p) {
+        p.classList.toggle('active', p.getAttribute('data-filter') === filter);
+      });
+      renderReservationsTable();
+    }
+
+    function matchesFilter(r) {
+      if (activeFilter === 'PENDING' && r.approvalStatus !== 'PENDING') return false;
+      if (activeFilter === 'APPROVED' && r.approvalStatus !== 'APPROVED') return false;
+      if (activeFilter === 'REJECTED' && r.approvalStatus !== 'REJECTED') return false;
+      if (activeFilter === 'SENT' && r.emailStatus !== 'SENT') return false;
+      if (activeFilter === 'FAILED' && r.emailStatus !== 'FAILED') return false;
+
+      if (searchTerm) {
+        var hay = [
+          r.referenceNumber,
+          r.guestName,
+          r.emailAddress,
+          r.contactNumber,
+          r.checkInDate,
+          r.checkOutDate
+        ].join(' ').toLowerCase();
+        if (hay.indexOf(searchTerm) === -1) return false;
+      }
+      return true;
+    }
+
+    function renderReservationsTable() {
+      var tbody = document.getElementById('reservationsBody');
+      tbody.textContent = '';
+
+      var rows = (STATE.reservations || []).filter(matchesFilter);
+      if (rows.length === 0) {
+        var trEmpty = el('tr');
+        var tdEmpty = el('td', 'empty-state', 'No reservations match the current filter.');
+        tdEmpty.colSpan = 7;
+        trEmpty.appendChild(tdEmpty);
+        tbody.appendChild(trEmpty);
+        return;
+      }
+
+      rows.forEach(function (r) {
+        var tr = el('tr');
+
+        // 1. Reference
+        var tdRef = el('td');
+        tdRef.appendChild(el('div', 'ref-code', r.referenceNumber));
+        tdRef.appendChild(el('div', 'cell-sub', r.submittedAt || ''));
+        tr.appendChild(tdRef);
+
+        // 2. Guest
+        var tdGuest = el('td');
+        tdGuest.appendChild(el('div', 'cell-main', r.guestName));
+        tdGuest.appendChild(el('div', 'cell-sub', r.emailAddress + ' \u2022 ' + r.contactNumber));
+        if (r.adminRemarks && r.adminRemarks.indexOf('[FLAG:') !== -1) {
+          tdGuest.appendChild(el('div', 'flag-note', r.adminRemarks));
+        }
+        tr.appendChild(tdGuest);
+
+        // 3. Stay Dates
+        var tdDates = el('td');
+        tdDates.appendChild(el('div', 'cell-main', (r.checkInDate || '') + ' \u2192 ' + (r.checkOutDate || '')));
+        if (r.specialRequests) {
+          var snippet = r.specialRequests.length > 48
+            ? r.specialRequests.substring(0, 45) + '...'
+            : r.specialRequests;
+          tdDates.appendChild(el('div', 'cell-sub', 'Note: ' + snippet));
+        }
+        tr.appendChild(tdDates);
+
+        // 4. Party
+        var tdParty = el('td');
+        tdParty.appendChild(el('div', 'cell-main', String(r.numberOfGuests || 0) + ' guest(s)'));
+        tdParty.appendChild(el('div', 'cell-sub', 'Rooms: ' + (r.numberOfRooms || 'N/A')));
+        tr.appendChild(tdParty);
+
+        // 5. Approval Status
+        var tdAppr = el('td');
+        tdAppr.appendChild(makeBadge(r.approvalStatus));
+        if (r.approvedAt) {
+          tdAppr.appendChild(el('div', 'cell-sub', r.approvedAt));
+        }
+        tr.appendChild(tdAppr);
+
+        // 6. Email Status
+        var tdEmail = el('td');
+        tdEmail.appendChild(makeBadge(r.emailStatus));
+        if (r.emailSentAt) {
+          tdEmail.appendChild(el('div', 'cell-sub', r.emailSentAt));
+        }
+        if (r.lastError) {
+          tdEmail.appendChild(el('div', 'err-note', r.lastError));
+        }
+        tr.appendChild(tdEmail);
+
+        // 7. Actions
+        var tdAct = el('td');
+        var actRow = el('div', 'action-row');
+
+        if (r.approvalStatus === 'PENDING') {
+          var approveAllBtn = el('button', 'btn btn-primary btn-sm', 'Approve & Endorse');
+          approveAllBtn.type = 'button';
+          approveAllBtn.onclick = function () { openApproveAndEndorseModal(r); };
+          actRow.appendChild(approveAllBtn);
+
+          var rejectBtn = el('button', 'btn btn-danger-outline btn-sm', 'Reject');
+          rejectBtn.type = 'button';
+          rejectBtn.onclick = function () { openRejectModal(r); };
+          actRow.appendChild(rejectBtn);
+        } else if (r.approvalStatus === 'APPROVED' && r.emailStatus !== 'SENT') {
+          var isRetry = r.emailStatus === 'FAILED';
+          var label = !r.pdfFileId
+            ? 'Generate PDF & Send'
+            : (isRetry ? 'Retry Send Email' : 'Send Email');
+          var finishBtn = el('button', 'btn btn-primary btn-sm', label);
+          finishBtn.type = 'button';
+          finishBtn.onclick = function () { openCompleteEndorsementModal(r, isRetry); };
+          actRow.appendChild(finishBtn);
+        }
+
+        if (r.pdfFileUrl && isSafeGoogleUrl(r.pdfFileUrl)) {
+          var pdfLink = el('a', 'btn btn-gold btn-sm', 'PDF');
+          pdfLink.href = r.pdfFileUrl;
+          pdfLink.target = '_blank';
+          pdfLink.rel = 'noopener noreferrer';
+          actRow.appendChild(pdfLink);
+        }
+
+        var viewBtn = el('button', 'btn btn-outline btn-sm', 'View');
+        viewBtn.type = 'button';
+        viewBtn.onclick = function () { openDetailsModal(r); };
+        actRow.appendChild(viewBtn);
+
+        tdAct.appendChild(actRow);
+        tr.appendChild(tdAct);
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderEmailLogs() {
+      var tbody = document.getElementById('emailLogsBody');
+      tbody.textContent = '';
+      var logs = STATE.emailLogs || [];
+      if (logs.length === 0) {
+        var tr = el('tr');
+        var td = el('td', 'empty-state', 'No endorsement email attempts logged yet.');
+        td.colSpan = 7;
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+      logs.forEach(function (l) {
+        var tr = el('tr');
+        tr.appendChild(el('td', 'ref-code', l.referenceNumber));
+        tr.appendChild(el('td', '', l.recipientEmail));
+        tr.appendChild(el('td', '', l.emailSubject));
+        var tdSt = el('td');
+        tdSt.appendChild(makeBadge(l.emailStatus));
+        tr.appendChild(tdSt);
+        tr.appendChild(el('td', '', l.dateAttempted));
+        tr.appendChild(el('td', '', l.dateSent || '—'));
+        var tdMeta = el('td');
+        tdMeta.appendChild(el('div', 'cell-sub', l.administrator || ''));
+        if (l.errorMessage) tdMeta.appendChild(el('div', 'err-note', l.errorMessage));
+        tr.appendChild(tdMeta);
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderActivityLogs() {
+      var tbody = document.getElementById('activityLogsBody');
+      tbody.textContent = '';
+      var logs = STATE.activityLogs || [];
+      if (logs.length === 0) {
+        var tr = el('tr');
+        var td = el('td', 'empty-state', 'No activity logs recorded yet.');
+        td.colSpan = 6;
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+      logs.forEach(function (a) {
+        var tr = el('tr');
+        tr.appendChild(el('td', '', a.timestamp));
+        tr.appendChild(el('td', 'ref-code', a.referenceNumber));
+        tr.appendChild(el('td', 'cell-main', a.action));
+        tr.appendChild(el('td', '', a.administrator));
+        var change = (a.previousValue || a.newValue)
+          ? ((a.previousValue || '—') + ' \u2192 ' + (a.newValue || '—'))
+          : '—';
+        tr.appendChild(el('td', 'cell-sub', change));
+        tr.appendChild(el('td', '', a.remarks));
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderSettings() {
+      var raw = STATE.settingsRaw || {};
+      SETTINGS_KEYS.forEach(function (k) {
+        var input = document.getElementById('S_' + k);
+        if (input && raw[k] !== undefined) {
+          input.value = raw[k];
+        }
+      });
+
+      var healthBox = document.getElementById('portalHealthList');
+      healthBox.textContent = '';
+      var checks = (STATE.metrics && STATE.metrics.health && STATE.metrics.health.checks) || [];
+      checks.forEach(function (c) {
+        var row = el('div', 'health-item');
+        var left = el('div');
+        left.appendChild(el('div', 'cell-main', c.label));
+        left.appendChild(el('div', 'cell-sub', c.detail));
+        row.appendChild(left);
+        row.appendChild(el('span', 'badge ' + (c.ok ? 'badge-APPROVED' : 'badge-FAILED'), c.ok ? 'OK' : 'ACTION NEEDED'));
+        healthBox.appendChild(row);
+      });
+    }
+
+    function renderAll() {
+      renderHeader();
+      renderKpis();
+      renderReservationsTable();
+      renderEmailLogs();
+      renderActivityLogs();
+      renderSettings();
+    }
+
+    /* ======================== MODALS ======================== */
+
+    function openModal(title, isDanger, bodyBuilder, footerButtons) {
+      var backdrop = document.getElementById('modalBackdrop');
+      var box = document.getElementById('modalBox');
+      var body = document.getElementById('modalBody');
+      var foot = document.getElementById('modalFoot');
+
+      box.classList.toggle('danger', Boolean(isDanger));
+      document.getElementById('modalTitle').textContent = title;
+      body.textContent = '';
+      foot.textContent = '';
+
+      bodyBuilder(body);
+      footerButtons.forEach(function (btn) { foot.appendChild(btn); });
+      backdrop.classList.add('open');
+    }
+
+    function closeModal() {
+      if (busy) return;
+      document.getElementById('modalBackdrop').classList.remove('open');
+    }
+
+    function buildSummaryBox(r) {
+      var box = el('div', 'summary-box');
+      var grid = el('div', 'summary-grid');
+      var items = [
+        ['Reference:', r.referenceNumber],
+        ['Guest:', r.guestName],
+        ['Email:', r.emailAddress],
+        ['Contact:', r.contactNumber],
+        ['Stay Dates:', (r.checkInDate || '') + ' to ' + (r.checkOutDate || '')],
+        ['Guests / Rooms:', String(r.numberOfGuests) + ' guest(s) / ' + (r.numberOfRooms || 'N/A')]
+      ];
+      if (r.specialRequests) {
+        items.push(['Special Requests:', r.specialRequests]);
+      }
+      items.forEach(function (pair) {
+        grid.appendChild(el('div', 'summary-lbl', pair[0]));
+        grid.appendChild(el('div', '', pair[1]));
+      });
+      box.appendChild(grid);
+      return box;
+    }
+
+    function openApproveAndEndorseModal(r) {
+      var remarksInput;
+      var cancelBtn = el('button', 'btn btn-outline', 'Cancel');
+      cancelBtn.type = 'button';
+      cancelBtn.onclick = closeModal;
+
+      var confirmBtn = el('button', 'btn btn-primary', 'Confirm: Approve, Generate PDF & Send Email');
+      confirmBtn.type = 'button';
+
+      openModal('Approve & Send Endorsement?', false, function (body) {
+        body.appendChild(el(
+          'div',
+          'pipeline-banner',
+          '1-Click Automated Flow: Clicking Confirm will (1) Approve the reservation, (2) Generate the private PDF Endorsement Certificate, and (3) Email the PDF to the guest.'
+        ));
+        body.appendChild(buildSummaryBox(r));
+
+        var field = el('div', 'field');
+        var lbl = el('label', '', 'Internal Admin Remarks (Optional)');
+        remarksInput = el('textarea');
+        remarksInput.rows = 3;
+        remarksInput.placeholder = 'Optional verification note (e.g., Downpayment confirmed)...';
+        field.appendChild(lbl);
+        field.appendChild(remarksInput);
+        body.appendChild(field);
+      }, [cancelBtn, confirmBtn]);
+
+      confirmBtn.onclick = function () {
+        if (busy) return;
+        busy = true;
+        cancelBtn.disabled = true;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = '';
+        confirmBtn.appendChild(el('span', 'spinner'));
+        confirmBtn.appendChild(el('span', '', ' Processing Approve \u2192 PDF \u2192 Email...'));
+
+        google.script.run
+          .withSuccessHandler(function (res) {
+            busy = false;
+            closeModal();
+            if (res && res.ok) {
+              var pdfUrl = res.data && res.data.pdf ? res.data.pdf.pdfFileUrl : '';
+              showToast(res.message, 'ok', pdfUrl, 'Preview Generated PDF');
+            } else {
+              showToast((res && res.message) || 'Endorsement pipeline failed.', 'err');
+            }
+            refreshPortal(true);
+          })
+          .withFailureHandler(function (err) {
+            busy = false;
+            closeModal();
+            showToast((err && err.message) || String(err), 'err');
+            refreshPortal(true);
+          })
+          .apiApproveAndEndorse(r.reservationId, (remarksInput.value || '').trim());
+      };
+    }
+
+    function openCompleteEndorsementModal(r, isRetry) {
+      var cancelBtn = el('button', 'btn btn-outline', 'Cancel');
+      cancelBtn.type = 'button';
+      cancelBtn.onclick = closeModal;
+
+      var btnText = !r.pdfFileId
+        ? 'Generate PDF & Send Email'
+        : (isRetry ? 'Retry Send Endorsement Email' : 'Send Endorsement Email');
+      var confirmBtn = el('button', 'btn btn-primary', btnText);
+      confirmBtn.type = 'button';
+
+      openModal(btnText + '?', false, function (body) {
+        if (isRetry && r.lastError) {
+          var warn = el('div', 'toast toast-info', 'Previous attempt failed: ' + r.lastError);
+          warn.style.marginBottom = '12px';
+          body.appendChild(warn);
+        }
+        body.appendChild(buildSummaryBox(r));
+      }, [cancelBtn, confirmBtn]);
+
+      confirmBtn.onclick = function () {
+        if (busy) return;
+        busy = true;
+        cancelBtn.disabled = true;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = '';
+        confirmBtn.appendChild(el('span', 'spinner'));
+        confirmBtn.appendChild(el('span', '', ' Processing...'));
+
+        google.script.run
+          .withSuccessHandler(function (res) {
+            busy = false;
+            closeModal();
+            if (res && res.ok) {
+              showToast(res.message, 'ok');
+            } else {
+              showToast((res && res.message) || 'Operation failed.', 'err');
+            }
+            refreshPortal(true);
+          })
+          .withFailureHandler(function (err) {
+            busy = false;
+            closeModal();
+            showToast((err && err.message) || String(err), 'err');
+            refreshPortal(true);
+          })
+          .apiCompleteApprovedEndorsement(r.reservationId, Boolean(isRetry));
+      };
+    }
+
+    function openRejectModal(r) {
+      var reasonInput;
+      var errInline;
+      var cancelBtn = el('button', 'btn btn-outline', 'Cancel');
+      cancelBtn.type = 'button';
+      cancelBtn.onclick = closeModal;
+
+      var confirmBtn = el('button', 'btn btn-danger', 'Reject Reservation');
+      confirmBtn.type = 'button';
+
+      openModal('Reject Reservation?', true, function (body) {
+        body.appendChild(buildSummaryBox(r));
+        var field = el('div', 'field');
+        field.appendChild(el('label', '', 'Rejection Reason (Required) *'));
+        reasonInput = el('textarea');
+        reasonInput.rows = 3;
+        reasonInput.placeholder = 'Enter the reason for rejecting this booking...';
+        field.appendChild(reasonInput);
+        body.appendChild(field);
+
+        errInline = el('div', 'err-note hidden');
+        errInline.style.maxWidth = 'none';
+        body.appendChild(errInline);
+      }, [cancelBtn, confirmBtn]);
+
+      confirmBtn.onclick = function () {
+        var reason = (reasonInput.value || '').trim();
+        if (!reason) {
+          errInline.textContent = 'Please enter a rejection reason.';
+          errInline.classList.remove('hidden');
+          reasonInput.focus();
+          return;
+        }
+        if (busy) return;
+        busy = true;
+        cancelBtn.disabled = true;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Rejecting...';
+
+        google.script.run
+          .withSuccessHandler(function (res) {
+            busy = false;
+            closeModal();
+            showToast((res && res.message) || 'Reservation updated.', res && res.ok ? 'ok' : 'err');
+            refreshPortal(true);
+          })
+          .withFailureHandler(function (err) {
+            busy = false;
+            closeModal();
+            showToast((err && err.message) || String(err), 'err');
+            refreshPortal(true);
+          })
+          .apiRejectReservation(r.reservationId, reason);
+      };
+    }
+
+    function openDetailsModal(r) {
+      var closeBtn = el('button', 'btn btn-outline', 'Close');
+      closeBtn.type = 'button';
+      closeBtn.onclick = closeModal;
+      var buttons = [closeBtn];
+
+      if (r.pdfFileUrl && isSafeGoogleUrl(r.pdfFileUrl)) {
+        var pdfBtn = el('a', 'btn btn-gold', 'Open Endorsement PDF');
+        pdfBtn.href = r.pdfFileUrl;
+        pdfBtn.target = '_blank';
+        pdfBtn.rel = 'noopener noreferrer';
+        buttons.unshift(pdfBtn);
+      }
+
+      openModal('Reservation ' + r.referenceNumber, false, function (body) {
+        var statusLine = el('div', '', '');
+        statusLine.style.marginBottom = '12px';
+        statusLine.appendChild(makeBadge(r.approvalStatus));
+        statusLine.appendChild(document.createTextNode(' '));
+        statusLine.appendChild(makeBadge(r.emailStatus));
+        body.appendChild(statusLine);
+
+        var box = el('div', 'summary-box');
+        var grid = el('div', 'summary-grid');
+        var pairs = [
+          ['Reservation ID:', r.reservationId],
+          ['Reference:', r.referenceNumber],
+          ['Guest Name:', r.guestName],
+          ['Email Address:', r.emailAddress],
+          ['Contact Number:', r.contactNumber],
+          ['Check-in Date:', r.checkInDate],
+          ['Check-out Date:', r.checkOutDate],
+          ['Guests:', String(r.numberOfGuests)],
+          ['Rooms:', r.numberOfRooms || 'Not Applicable'],
+          ['Special Requests:', r.specialRequests || '(None)'],
+          ['Submitted At:', r.submittedAt || '—'],
+          ['Approved At:', r.approvedAt || '—'],
+          ['Approved By:', r.approvedBy || '—'],
+          ['Email Sent At:', r.emailSentAt || '—'],
+          ['Admin Remarks:', r.adminRemarks || '(None)'],
+          ['Last Error:', r.lastError || '(None)']
+        ];
+        pairs.forEach(function (p) {
+          grid.appendChild(el('div', 'summary-lbl', p[0]));
+          grid.appendChild(el('div', '', p[1]));
+        });
+        box.appendChild(grid);
+        body.appendChild(box);
+      }, buttons);
+    }
+
+    /* ======================== DATA REFRESH & SETTINGS ======================== */
+
+    function refreshPortal(silent) {
+      var btn = document.getElementById('refreshBtn');
+      btn.disabled = true;
+      btn.textContent = 'Refreshing...';
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          btn.disabled = false;
+          btn.textContent = 'Refresh';
+          if (res && res.ok && res.data) {
+            STATE = res.data;
+            renderAll();
+            if (!silent) showToast('Portal synced with latest Google Sheets data.', 'info');
+          } else if (!silent) {
+            showToast((res && res.message) || 'Could not refresh portal.', 'err');
+          }
+        })
+        .withFailureHandler(function (err) {
+          btn.disabled = false;
+          btn.textContent = 'Refresh';
+          if (!silent) showToast((err && err.message) || String(err), 'err');
+        })
+        .apiGetPortalBootstrap();
+    }
+
+    /* ======================== EVENT WIRING ======================== */
+
+    document.querySelectorAll('.tab-btn').forEach(function (btn) {
+      btn.onclick = function () {
+        var target = btn.getAttribute('data-tab');
+        document.querySelectorAll('.tab-btn').forEach(function (b) {
+          b.classList.toggle('active', b === btn);
+        });
+        ['reservations', 'emailLogs', 'activityLogs', 'settings'].forEach(function (t) {
+          document.getElementById('tab-' + t).classList.toggle('hidden', t !== target);
+        });
+      };
+    });
+
+    document.querySelectorAll('#statusPills .pill').forEach(function (pill) {
+      pill.onclick = function () {
+        setFilter(pill.getAttribute('data-filter'));
+      };
+    });
+
+    document.getElementById('searchInput').oninput = function (ev) {
+      searchTerm = (ev.target.value || '').trim().toLowerCase();
+      renderReservationsTable();
+    };
+
+    document.getElementById('refreshBtn').onclick = function () { refreshPortal(false); };
+    document.getElementById('modalCloseX').onclick = closeModal;
+    document.getElementById('modalBackdrop').onclick = function (ev) {
+      if (ev.target === document.getElementById('modalBackdrop')) closeModal();
+    };
+
+    document.getElementById('portalSettingsForm').onsubmit = function (ev) {
+      ev.preventDefault();
+      var saveBtn = document.getElementById('saveSettingsBtn');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+
+      var updates = {};
+      SETTINGS_KEYS.forEach(function (k) {
+        updates[k] = document.getElementById('S_' + k).value.trim();
+      });
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Settings';
+          if (res && res.ok) {
+            showToast('System settings saved successfully.', 'ok');
+            refreshPortal(true);
+          } else {
+            var msg = (res && res.message) || 'Could not save settings.';
+            if (res && res.errors && res.errors.length) msg += ' (' + res.errors.join('; ') + ')';
+            showToast(msg, 'err');
+          }
+        })
+        .withFailureHandler(function (err) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Settings';
+          showToast((err && err.message) || String(err), 'err');
+        })
+        .apiSaveSettings(updates);
+    };
+
+    renderAll();
+  </script>
+</body>
+</html>
