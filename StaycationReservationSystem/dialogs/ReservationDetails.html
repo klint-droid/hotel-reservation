@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <base target="_top">
+  <style>
+    :root {
+      --brand-green: #1B4332;
+      --brand-green-light: #2D6A4F;
+      --brand-beige: #F5EFE6;
+      --brand-gold: #C5A059;
+      --surface: #FFFFFF;
+      --text: #2B2D2F;
+      --muted: #5C636A;
+      --border: #E2DDD4;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 18px 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      color: var(--text);
+      background: var(--brand-beige);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .header {
+      background: var(--brand-green);
+      color: #FFFFFF;
+      padding: 16px 20px;
+      border-radius: 8px;
+      border-bottom: 3px solid var(--brand-gold);
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-family: Georgia, serif;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+    .header .sub {
+      font-size: 12px;
+      color: #D8E2DC;
+      margin-top: 2px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .card h2 {
+      margin: 0 0 12px 0;
+      font-size: 14px;
+      color: var(--brand-green);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .kpi {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--brand-green);
+      border-radius: 6px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+    .kpi.warn { border-top-color: #D4A017; }
+    .kpi.ok { border-top-color: #155724; }
+    .kpi.err { border-top-color: #B02A37; }
+    .kpi .num { font-size: 22px; font-weight: 700; color: var(--brand-green); }
+    .kpi .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      row-gap: 8px;
+      column-gap: 12px;
+    }
+    .detail-label { font-weight: 600; color: var(--muted); }
+    .detail-value { color: var(--text); word-break: break-word; }
+    .badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+    }
+    .badge-PENDING { background: #FFF3CD; color: #856404; }
+    .badge-APPROVED, .badge-SENT { background: #D4EDDA; color: #155724; }
+    .badge-REJECTED, .badge-FAILED { background: #F8D7DA; color: #721C24; }
+    .badge-NOT_SENT { background: #E2E3E5; color: #383D41; }
+    .alert {
+      padding: 10px 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      font-size: 12px;
+    }
+    .alert-danger { background: #F8D7DA; color: #721C24; border: 1px solid #F1AEB5; }
+    .alert-success { background: #D4EDDA; color: #155724; border: 1px solid #A3CFBB; }
+    .alert-info { background: #FFF8E6; color: #7C5C10; border: 1px solid #E6D2A2; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { padding: 7px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+    th { background: var(--brand-beige); color: var(--brand-green); font-weight: 600; }
+    .health-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid #F0ECE4;
+    }
+    .health-item:last-child { border-bottom: none; }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 12px;
+    }
+    button {
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--brand-green); color: #FFFFFF; }
+    .btn-primary:hover:not(:disabled) { background: var(--brand-green-light); }
+    .btn-gold { background: var(--brand-gold); color: #1B4332; }
+    .btn-danger { background: #B02A37; color: #FFFFFF; }
+    .btn-secondary { background: #E2E3E5; color: #2B2D2F; }
+    .status-msg { margin-top: 10px; font-weight: 600; }
+    a { color: var(--brand-green); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    var MODE = <?!= modeJson ?>;
+    var DATA = <?!= initialDataJson ?>;
+
+    function isSafeGoogleUrl(url) {
+      return typeof url === 'string' && /^https:\/\/(drive|docs)\.google\.com\//i.test(url.trim());
+    }
+
+    function el(tag, className, text) {
+      var node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined && text !== null) node.textContent = String(text);
+      return node;
+    }
+
+    function createBadge(value) {
+      return el('span', 'badge badge-' + String(value || 'NOT_SENT'), value || 'N/A');
+    }
+
+    function showStatus(container, message, isError) {
+      container.textContent = '';
+      var box = el('div', 'alert ' + (isError ? 'alert-danger' : 'alert-success'), message);
+      container.appendChild(box);
+    }
+
+    function renderDashboard() {
+      var app = document.getElementById('app');
+      app.textContent = '';
+
+      var header = el('div', 'header');
+      var hLeft = el('div');
+      hLeft.appendChild(el('h1', '', DATA.staycationName || 'Staycation Management Dashboard'));
+      hLeft.appendChild(el('div', 'sub', 'Updated: ' + (DATA.generatedAt || '') + ' (' + (DATA.timezone || 'Asia/Manila') + ')'));
+      header.appendChild(hLeft);
+      app.appendChild(header);
+
+      var counts = DATA.counts || {};
+      var grid = el('div', 'kpi-grid');
+      var kpis = [
+        { num: counts.total || 0, lbl: 'Total Reservations', cls: '' },
+        { num: counts.pending || 0, lbl: 'Pending Review', cls: 'warn' },
+        { num: counts.approved || 0, lbl: 'Approved', cls: 'ok' },
+        { num: counts.rejected || 0, lbl: 'Rejected', cls: 'err' },
+        { num: counts.pdfReady || 0, lbl: 'PDFs Ready', cls: 'ok' },
+        { num: counts.readyToEmail || 0, lbl: 'Ready To Email', cls: 'warn' },
+        { num: counts.emailSent || 0, lbl: 'Emails Sent', cls: 'ok' },
+        { num: counts.emailFailed || 0, lbl: 'Emails Failed', cls: 'err' }
+      ];
+      kpis.forEach(function (item) {
+        var box = el('div', 'kpi ' + item.cls);
+        box.appendChild(el('div', 'num', item.num));
+        box.appendChild(el('div', 'lbl', item.lbl));
+        grid.appendChild(box);
+      });
+      app.appendChild(grid);
+
+      // Pending Queue
+      var pendingCard = el('div', 'card');
+      pendingCard.appendChild(el('h2', '', 'Pending Reservations Requiring Review'));
+      var pending = DATA.pendingReservations || [];
+      if (pending.length === 0) {
+        pendingCard.appendChild(el('div', '', 'No pending reservations awaiting approval.'));
+      } else {
+        var table = el('table');
+        var thead = el('thead');
+        var hrow = el('tr');
+        ['Reference', 'Guest Name', 'Check-in', 'Check-out', 'Guests'].forEach(function (h) {
+          hrow.appendChild(el('th', '', h));
+        });
+        thead.appendChild(hrow);
+        table.appendChild(thead);
+        var tbody = el('tbody');
+        pending.forEach(function (p) {
+          var tr = el('tr');
+          tr.appendChild(el('td', '', p.referenceNumber));
+          tr.appendChild(el('td', '', p.guestName));
+          tr.appendChild(el('td', '', p.checkInDate));
+          tr.appendChild(el('td', '', p.checkOutDate));
+          tr.appendChild(el('td', '', p.numberOfGuests));
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        pendingCard.appendChild(table);
+      }
+      app.appendChild(pendingCard);
+
+      // Workspace Health
+      var healthCard = el('div', 'card');
+      healthCard.appendChild(el('h2', '', 'Workspace Health & Daily Quota'));
+      var checks = (DATA.health && DATA.health.checks) || [];
+      checks.forEach(function (c) {
+        var row = el('div', 'health-item');
+        var left = el('div');
+        left.appendChild(el('strong', '', c.label + ': '));
+        left.appendChild(el('span', '', c.detail));
+        row.appendChild(left);
+        row.appendChild(el('span', 'badge ' + (c.ok ? 'badge-APPROVED' : 'badge-FAILED'), c.ok ? 'OK' : 'ACTION NEEDED'));
+        healthCard.appendChild(row);
+      });
+      app.appendChild(healthCard);
+
+      var actions = el('div', 'actions');
+      var closeBtn = el('button', 'btn-secondary', 'CLOSE');
+      closeBtn.onclick = function () { google.script.host.close(); };
+      actions.appendChild(closeBtn);
+      app.appendChild(actions);
+    }
+
+    function renderReservation() {
+      var app = document.getElementById('app');
+      app.textContent = '';
+
+      var res = DATA.reservation || {};
+      var validation = DATA.validation || { valid: true, errors: [] };
+      var integrity = DATA.integrity || { valid: true };
+
+      var header = el('div', 'header');
+      var hLeft = el('div');
+      hLeft.appendChild(el('h1', '', res.referenceNumber || 'Reservation Details'));
+      hLeft.appendChild(el('div', 'sub', 'ID: ' + (res.reservationId || 'N/A')));
+      header.appendChild(hLeft);
+      var hRight = el('div');
+      hRight.appendChild(createBadge(res.approvalStatus));
+      hRight.appendChild(document.createTextNode(' '));
+      hRight.appendChild(createBadge(res.emailStatus));
+      header.appendChild(hRight);
+      app.appendChild(header);
+
+      var statusArea = el('div');
+      app.appendChild(statusArea);
+
+      if (!validation.valid) {
+        app.appendChild(el('div', 'alert alert-danger', 'Validation Warning: ' + (validation.errors || []).join(' | ')));
+      }
+      if (!integrity.valid) {
+        app.appendChild(el('div', 'alert alert-danger', 'Integrity Alert: ' + integrity.message));
+      }
+      if (res.lastError) {
+        app.appendChild(el('div', 'alert alert-danger', 'Last Recorded Error: ' + res.lastError));
+      }
+
+      var card = el('div', 'card');
+      card.appendChild(el('h2', '', 'Guest & Staycation Details'));
+      var grid = el('div', 'detail-grid');
+      var fields = [
+        ['Guest Name', res.guestName],
+        ['Email Address', res.emailAddress],
+        ['Contact Number', res.contactNumber],
+        ['Check-in Date', res.checkInDate],
+        ['Check-out Date', res.checkOutDate],
+        ['Number of Guests', res.numberOfGuests],
+        ['Number of Rooms', res.numberOfRooms],
+        ['Special Requests', res.specialRequests || '(None)'],
+        ['Submitted At', res.submittedAt],
+        ['Approved At', res.approvedAt || '(Not yet approved)'],
+        ['Approved By', res.approvedBy || '(N/A)'],
+        ['Admin Remarks', res.adminRemarks || '(None)'],
+        ['Email Sent At', res.emailSentAt || '(Not yet sent)']
+      ];
+      fields.forEach(function (pair) {
+        grid.appendChild(el('div', 'detail-label', pair[0]));
+        grid.appendChild(el('div', 'detail-value', pair[1]));
+      });
+
+      grid.appendChild(el('div', 'detail-label', 'Endorsement PDF'));
+      var pdfVal = el('div', 'detail-value');
+      if (res.pdfFileUrl && isSafeGoogleUrl(res.pdfFileUrl)) {
+        var link = el('a', '', 'Preview Generated PDF (Admin Only)');
+        link.href = res.pdfFileUrl.trim();
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        pdfVal.appendChild(link);
+      } else if (res.pdfFileUrl) {
+        pdfVal.textContent = '(Blocked unsafe URL — regenerate endorsement PDF)';
+      } else {
+        pdfVal.textContent = '(Not generated yet)';
+      }
+      grid.appendChild(pdfVal);
+
+      card.appendChild(grid);
+      app.appendChild(card);
+
+      var actions = el('div', 'actions');
+
+      if (res.approvalStatus === 'PENDING') {
+        var approveBtn = el('button', 'btn-primary', 'APPROVE RESERVATION');
+        approveBtn.onclick = function () {
+          approveBtn.disabled = true;
+          google.script.run
+            .withSuccessHandler(function (result) {
+              if (result && !result.ok) {
+                approveBtn.disabled = false;
+                showStatus(statusArea, result.message || 'Cannot open approval confirmation.', true);
+              }
+            })
+            .withFailureHandler(function (err) {
+              approveBtn.disabled = false;
+              showStatus(statusArea, err.message || String(err), true);
+            })
+            .apiOpenConfirmationForReservation(res.reservationId, 'APPROVE');
+        };
+        actions.appendChild(approveBtn);
+
+        var rejectBtn = el('button', 'btn-danger', 'REJECT RESERVATION');
+        rejectBtn.onclick = function () {
+          rejectBtn.disabled = true;
+          google.script.run
+            .withSuccessHandler(function (result) {
+              if (result && !result.ok) {
+                rejectBtn.disabled = false;
+                showStatus(statusArea, result.message || 'Cannot open rejection confirmation.', true);
+              }
+            })
+            .withFailureHandler(function (err) {
+              rejectBtn.disabled = false;
+              showStatus(statusArea, err.message || String(err), true);
+            })
+            .apiOpenConfirmationForReservation(res.reservationId, 'REJECT');
+        };
+        actions.appendChild(rejectBtn);
+      }
+
+      if (res.approvalStatus === 'APPROVED' && res.emailStatus !== 'SENT') {
+        var pdfBtn = el('button', 'btn-gold', res.pdfFileId ? 'REGENERATE PDF' : 'GENERATE ENDORSEMENT PDF');
+        pdfBtn.onclick = function () {
+          pdfBtn.disabled = true;
+          showStatus(statusArea, 'Generating endorsement PDF...', false);
+          google.script.run
+            .withSuccessHandler(function (result) {
+              pdfBtn.disabled = false;
+              if (result && result.ok) {
+                showStatus(statusArea, 'PDF generated: ' + result.data.fileName, false);
+                res.pdfFileId = result.data.pdfFileId;
+                res.pdfFileUrl = result.data.pdfFileUrl;
+                res.lastError = '';
+                setTimeout(renderReservation, 700);
+              } else {
+                showStatus(statusArea, (result && result.message) || 'PDF generation failed.', true);
+              }
+            })
+            .withFailureHandler(function (err) {
+              pdfBtn.disabled = false;
+              showStatus(statusArea, err.message || String(err), true);
+            })
+            .apiGenerateEndorsementPdf(res.reservationId);
+        };
+        actions.appendChild(pdfBtn);
+
+        if (res.pdfFileId) {
+          var emailBtn = el('button', 'btn-primary', 'PREVIEW & SEND EMAIL');
+          emailBtn.onclick = function () {
+            emailBtn.disabled = true;
+            google.script.run
+              .withSuccessHandler(function (result) {
+                if (result && !result.ok) {
+                  emailBtn.disabled = false;
+                  showStatus(statusArea, result.message, true);
+                }
+              })
+              .withFailureHandler(function (err) {
+                emailBtn.disabled = false;
+                showStatus(statusArea, err.message || String(err), true);
+              })
+              .apiOpenConfirmationForReservation(res.reservationId, 'SEND_EMAIL');
+          };
+          actions.appendChild(emailBtn);
+        }
+      }
+
+      var closeBtn = el('button', 'btn-secondary', 'CLOSE');
+      closeBtn.onclick = function () { google.script.host.close(); };
+      actions.appendChild(closeBtn);
+      app.appendChild(actions);
+    }
+
+    if (MODE === 'DASHBOARD') {
+      renderDashboard();
+    } else {
+      renderReservation();
+    }
+  </script>
+</body>
+</html>

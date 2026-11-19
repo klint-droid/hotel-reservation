@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <base target="_top">
+  <style>
+    :root {
+      --brand-green: #1B4332;
+      --brand-beige: #F5EFE6;
+      --brand-gold: #C5A059;
+      --danger: #B02A37;
+      --text: #2B2D2F;
+      --muted: #5C636A;
+      --border: #DFD8CC;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 18px 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--brand-beige);
+      color: var(--text);
+      font-size: 13px;
+    }
+    .panel {
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      border-top: 4px solid var(--brand-green);
+      border-radius: 8px;
+      padding: 18px;
+    }
+    .panel.reject { border-top-color: var(--danger); }
+    h1 {
+      margin: 0 0 10px 0;
+      font-family: Georgia, serif;
+      font-size: 18px;
+      color: var(--brand-green);
+    }
+    .panel.reject h1 { color: var(--danger); }
+    .summary {
+      background: var(--brand-beige);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0;
+    }
+    .summary-row { margin: 4px 0; }
+    .summary-label { font-weight: 600; color: var(--muted); display: inline-block; width: 110px; }
+    .note {
+      background: #FFF8E6;
+      border: 1px solid #E6D2A2;
+      color: #7C5C10;
+      padding: 9px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+    label { display: block; font-weight: 600; margin-bottom: 5px; }
+    textarea {
+      width: 100%;
+      min-height: 76px;
+      padding: 8px 10px;
+      border: 1px solid #C8C0B4;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      resize: vertical;
+    }
+    .error {
+      background: #F8D7DA;
+      color: #721C24;
+      border: 1px solid #F1AEB5;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-top: 10px;
+      display: none;
+    }
+    .success {
+      background: #D4EDDA;
+      color: #155724;
+      border: 1px solid #A3CFBB;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-top: 10px;
+      display: none;
+    }
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    button {
+      border: none;
+      border-radius: 6px;
+      padding: 9px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-cancel { background: #E2E3E5; color: var(--text); }
+    .btn-confirm { background: var(--brand-green); color: #FFFFFF; }
+    .btn-danger { background: var(--danger); color: #FFFFFF; }
+  </style>
+</head>
+<body>
+  <div id="panel" class="panel">
+    <h1 id="title"></h1>
+    <p id="promptText"></p>
+
+    <div class="summary" id="summaryBox"></div>
+    <div class="note" id="warningNote"></div>
+
+    <div id="inputGroup">
+      <label id="inputLabel" for="remarksInput"></label>
+      <textarea id="remarksInput" placeholder=""></textarea>
+    </div>
+
+    <div id="errorBox" class="error"></div>
+    <div id="successBox" class="success"></div>
+
+    <div class="actions">
+      <button id="cancelBtn" class="btn-cancel" type="button">CANCEL</button>
+      <button id="confirmBtn" class="btn-confirm" type="button"></button>
+    </div>
+  </div>
+
+  <script>
+    var PAYLOAD = <?!= payloadJson ?>;
+    var res = PAYLOAD.reservation || {};
+
+    var panel = document.getElementById('panel');
+    var titleEl = document.getElementById('title');
+    var promptEl = document.getElementById('promptText');
+    var summaryBox = document.getElementById('summaryBox');
+    var warningEl = document.getElementById('warningNote');
+    var inputLabel = document.getElementById('inputLabel');
+    var remarksInput = document.getElementById('remarksInput');
+    var errorBox = document.getElementById('errorBox');
+    var successBox = document.getElementById('successBox');
+    var cancelBtn = document.getElementById('cancelBtn');
+    var confirmBtn = document.getElementById('confirmBtn');
+
+    titleEl.textContent = PAYLOAD.title || 'Confirm Action';
+    warningEl.textContent = PAYLOAD.warningNote || '';
+    confirmBtn.textContent = PAYLOAD.confirmLabel || 'CONFIRM';
+
+    if (PAYLOAD.action === 'REJECT') {
+      panel.classList.add('reject');
+      confirmBtn.className = 'btn-danger';
+      promptEl.textContent = 'You are about to reject this staycation reservation:';
+      inputLabel.textContent = 'Rejection Reason (Required)';
+      remarksInput.placeholder = 'Enter the reason for rejecting this reservation...';
+    } else if (PAYLOAD.action === 'APPROVE') {
+      promptEl.textContent = 'You are about to approve this staycation reservation:';
+      inputLabel.textContent = 'Internal Admin Remarks (Optional)';
+      remarksInput.placeholder = 'Optional internal verification note...';
+    } else {
+      promptEl.textContent = 'You are about to send the reservation endorsement certificate to:';
+      document.getElementById('inputGroup').style.display = 'none';
+    }
+
+    var rows = [
+      ['Guest:', res.guestName || ''],
+      ['Email:', res.emailAddress || ''],
+      ['Reference:', res.referenceNumber || ''],
+      ['Stay Dates:', (res.checkInDate || '') + ' to ' + (res.checkOutDate || '')],
+      ['Guests:', String(res.numberOfGuests || '')]
+    ];
+    rows.forEach(function (pair) {
+      var line = document.createElement('div');
+      line.className = 'summary-row';
+      var lbl = document.createElement('span');
+      lbl.className = 'summary-label';
+      lbl.textContent = pair[0];
+      var val = document.createElement('span');
+      val.textContent = pair[1];
+      line.appendChild(lbl);
+      line.appendChild(val);
+      summaryBox.appendChild(line);
+    });
+
+    function showError(msg) {
+      successBox.style.display = 'none';
+      errorBox.textContent = msg;
+      errorBox.style.display = 'block';
+    }
+
+    function showSuccess(msg) {
+      errorBox.style.display = 'none';
+      successBox.textContent = msg;
+      successBox.style.display = 'block';
+    }
+
+    cancelBtn.onclick = function () {
+      google.script.host.close();
+    };
+
+    confirmBtn.onclick = function () {
+      var text = (remarksInput.value || '').trim();
+      if (PAYLOAD.requireReason && !text) {
+        showError('Please provide a rejection reason before proceeding.');
+        remarksInput.focus();
+        return;
+      }
+
+      confirmBtn.disabled = true;
+      cancelBtn.disabled = true;
+      errorBox.style.display = 'none';
+
+      var onDone = function (result) {
+        if (result && result.ok) {
+          showSuccess(result.message || 'Operation completed successfully.');
+          setTimeout(function () { google.script.host.close(); }, 1100);
+        } else {
+          confirmBtn.disabled = false;
+          cancelBtn.disabled = false;
+          var errMsg = (result && result.message) || 'Action failed.';
+          if (result && result.errors && result.errors.length) {
+            errMsg += ' (' + result.errors.join('; ') + ')';
+          }
+          showError(errMsg);
+        }
+      };
+
+      var onFail = function (err) {
+        confirmBtn.disabled = false;
+        cancelBtn.disabled = false;
+        showError((err && err.message) || String(err));
+      };
+
+      if (PAYLOAD.action === 'APPROVE') {
+        google.script.run.withSuccessHandler(onDone).withFailureHandler(onFail)
+          .apiApproveReservation(res.reservationId, text);
+      } else if (PAYLOAD.action === 'REJECT') {
+        google.script.run.withSuccessHandler(onDone).withFailureHandler(onFail)
+          .apiRejectReservation(res.reservationId, text);
+      } else if (PAYLOAD.action === 'SEND_EMAIL') {
+        google.script.run.withSuccessHandler(onDone).withFailureHandler(onFail)
+          .apiSendEndorsementEmail(res.reservationId, Boolean(PAYLOAD.allowFailedRetry));
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+# Local clasp credentials and bound script ID (never commit real Script IDs or tokens)
+.clasp.json
+.clasprc.json
+
+# Node dev tooling
+node_modules/
+npm-debug.log*
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.log
+
+# Local environment secrets
+.env
+.env.local

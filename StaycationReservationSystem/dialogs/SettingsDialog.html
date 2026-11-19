@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <base target="_top">
+  <style>
+    :root {
+      --brand-green: #1B4332;
+      --brand-beige: #F5EFE6;
+      --brand-gold: #C5A059;
+      --text: #2B2D2F;
+      --muted: #5C636A;
+      --border: #DDD6C9;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 16px 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--brand-beige);
+      color: var(--text);
+      font-size: 13px;
+    }
+    .header {
+      background: var(--brand-green);
+      color: #FFFFFF;
+      padding: 14px 18px;
+      border-radius: 8px;
+      border-bottom: 3px solid var(--brand-gold);
+      margin-bottom: 14px;
+    }
+    .header h1 { margin: 0; font-family: Georgia, serif; font-size: 17px; }
+    .header p { margin: 3px 0 0; font-size: 12px; color: #D8E2DC; }
+    .card {
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .card h2 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      color: var(--brand-green);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }
+    .field { margin-bottom: 10px; }
+    .field label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 12px; }
+    .field input {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid #C8C0B4;
+      border-radius: 5px;
+      font-size: 13px;
+    }
+    .field .hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .health-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      border-bottom: 1px solid #F0ECE4;
+      font-size: 12px;
+    }
+    .health-row:last-child { border-bottom: none; }
+    .badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+    .badge-ok { background: #D4EDDA; color: #155724; }
+    .badge-err { background: #F8D7DA; color: #721C24; }
+    .msg { padding: 9px 12px; border-radius: 6px; margin-bottom: 10px; display: none; font-size: 12px; }
+    .msg-ok { background: #D4EDDA; color: #155724; border: 1px solid #A3CFBB; }
+    .msg-err { background: #F8D7DA; color: #721C24; border: 1px solid #F1AEB5; }
+    .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
+    button { border: none; border-radius: 6px; padding: 9px 16px; font-weight: 700; font-size: 12px; cursor: pointer; }
+    .btn-primary { background: var(--brand-green); color: #FFFFFF; }
+    .btn-secondary { background: #E2E3E5; color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>System Settings &amp; Workspace Health</h1>
+    <p>Configure staycation branding, endorsement template, private Drive folder, and authorized administrators.</p>
+  </div>
+
+  <div id="statusMsg" class="msg"></div>
+
+  <form id="settingsForm">
+    <div class="card">
+      <h2>Staycation Branding &amp; Contact</h2>
+      <div class="field">
+        <label for="STAYCATION_NAME">Staycation Name *</label>
+        <input id="STAYCATION_NAME" name="STAYCATION_NAME" type="text" required>
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label for="STAYCATION_CONTACT_NUMBER">Staycation Contact Number *</label>
+          <input id="STAYCATION_CONTACT_NUMBER" name="STAYCATION_CONTACT_NUMBER" type="text" required>
+        </div>
+        <div class="field">
+          <label for="STAYCATION_EMAIL_ADDRESS">Staycation Email Address *</label>
+          <input id="STAYCATION_EMAIL_ADDRESS" name="STAYCATION_EMAIL_ADDRESS" type="email" required>
+        </div>
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label for="STAYCATION_FACEBOOK_PAGE">Staycation Facebook Page</label>
+          <input id="STAYCATION_FACEBOOK_PAGE" name="STAYCATION_FACEBOOK_PAGE" type="text">
+        </div>
+        <div class="field">
+          <label for="STAYCATION_LOGO_URL">Staycation Logo URL / Drive File ID</label>
+          <input id="STAYCATION_LOGO_URL" name="STAYCATION_LOGO_URL" type="text">
+        </div>
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label for="CHECK_IN_TIME">Check-in Time *</label>
+          <input id="CHECK_IN_TIME" name="CHECK_IN_TIME" type="text" required>
+        </div>
+        <div class="field">
+          <label for="CHECK_OUT_TIME">Check-out Time *</label>
+          <input id="CHECK_OUT_TIME" name="CHECK_OUT_TIME" type="text" required>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Google Workspace Resources &amp; Security</h2>
+      <div class="field">
+        <label for="DOCS_TEMPLATE_ID">Google Docs Endorsement Template ID *</label>
+        <input id="DOCS_TEMPLATE_ID" name="DOCS_TEMPLATE_ID" type="text" required>
+      </div>
+      <div class="field">
+        <label for="DRIVE_OUTPUT_FOLDER_ID">Private Google Drive Output Folder ID *</label>
+        <input id="DRIVE_OUTPUT_FOLDER_ID" name="DRIVE_OUTPUT_FOLDER_ID" type="text" required>
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label for="ADMINISTRATOR_EMAIL">Authorized Administrator Email(s) *</label>
+          <input id="ADMINISTRATOR_EMAIL" name="ADMINISTRATOR_EMAIL" type="text" required>
+          <div class="hint">Comma-separated list of authorized Google accounts.</div>
+        </div>
+        <div class="field">
+          <label for="TIMEZONE">Timezone *</label>
+          <input id="TIMEZONE" name="TIMEZONE" type="text" required>
+          <div class="hint">Default: Asia/Manila</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Workspace Health Diagnostics</h2>
+      <div id="healthList"></div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn-secondary" id="closeBtn">CLOSE</button>
+      <button type="submit" class="btn-primary" id="saveBtn">SAVE SETTINGS</button>
+    </div>
+  </form>
+
+  <script>
+    var INIT = <?!= settingsJson ?>;
+    var KEYS = [
+      'STAYCATION_NAME',
+      'STAYCATION_LOGO_URL',
+      'STAYCATION_CONTACT_NUMBER',
+      'STAYCATION_EMAIL_ADDRESS',
+      'STAYCATION_FACEBOOK_PAGE',
+      'CHECK_IN_TIME',
+      'CHECK_OUT_TIME',
+      'DOCS_TEMPLATE_ID',
+      'DRIVE_OUTPUT_FOLDER_ID',
+      'ADMINISTRATOR_EMAIL',
+      'TIMEZONE'
+    ];
+
+    function populateForm(raw) {
+      KEYS.forEach(function (k) {
+        var input = document.getElementById(k);
+        if (input && raw && raw[k] !== undefined) {
+          input.value = raw[k];
+        }
+      });
+    }
+
+    function renderHealth(health) {
+      var list = document.getElementById('healthList');
+      list.textContent = '';
+      var checks = (health && health.checks) || [];
+      checks.forEach(function (c) {
+        var row = document.createElement('div');
+        row.className = 'health-row';
+        var left = document.createElement('div');
+        var strong = document.createElement('strong');
+        strong.textContent = c.label + ': ';
+        var span = document.createElement('span');
+        span.textContent = c.detail;
+        left.appendChild(strong);
+        left.appendChild(span);
+
+        var badge = document.createElement('span');
+        badge.className = 'badge ' + (c.ok ? 'badge-ok' : 'badge-err');
+        badge.textContent = c.ok ? 'OK' : 'NEEDS SETUP';
+
+        row.appendChild(left);
+        row.appendChild(badge);
+        list.appendChild(row);
+      });
+    }
+
+    function setMsg(text, isError) {
+      var box = document.getElementById('statusMsg');
+      box.className = 'msg ' + (isError ? 'msg-err' : 'msg-ok');
+      box.textContent = text;
+      box.style.display = 'block';
+    }
+
+    populateForm(INIT.raw || {});
+    renderHealth(INIT.health || {});
+
+    document.getElementById('closeBtn').onclick = function () {
+      google.script.host.close();
+    };
+
+    document.getElementById('settingsForm').onsubmit = function (ev) {
+      ev.preventDefault();
+      var saveBtn = document.getElementById('saveBtn');
+      saveBtn.disabled = true;
+
+      var updates = {};
+      KEYS.forEach(function (k) {
+        updates[k] = document.getElementById(k).value.trim();
+      });
+
+      google.script.run
+        .withSuccessHandler(function (result) {
+          saveBtn.disabled = false;
+          if (result && result.ok) {
+            setMsg('Settings saved successfully.', false);
+            if (result.data && result.data.health) {
+              renderHealth(result.data.health);
+            }
+          } else {
+            var msg = (result && result.message) || 'Could not save settings.';
+            if (result && result.errors && result.errors.length) {
+              msg += ' ' + result.errors.join(' | ');
+            }
+            setMsg(msg, true);
+          }
+        })
+        .withFailureHandler(function (err) {
+          saveBtn.disabled = false;
+          setMsg((err && err.message) || String(err), true);
+        })
+        .apiSaveSettings(updates);
+    };
+  </script>
+</body>
+</html>
