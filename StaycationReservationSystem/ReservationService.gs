@@ -49,7 +49,9 @@ var ReservationService = (function () {
       emailSentAt: rowValues[C.EMAIL_SENT_AT - 1] instanceof Date
         ? Utils.formatTimestamp(rowValues[C.EMAIL_SENT_AT - 1], tz)
         : Utils.normalizeText(rowValues[C.EMAIL_SENT_AT - 1]),
-      lastError: Utils.stripLeadingQuote(Utils.normalizeText(rowValues[C.LAST_ERROR - 1]))
+      lastError: Utils.stripLeadingQuote(Utils.normalizeText(rowValues[C.LAST_ERROR - 1])),
+      companionGuests: Utils.stripLeadingQuote(Utils.normalizeText(rowValues[C.COMPANION_GUESTS - 1])),
+      validIdFileIds: Utils.stripLeadingQuote(Utils.normalizeText(rowValues[C.VALID_ID_FILE_IDS - 1]))
     };
   }
 
@@ -74,7 +76,9 @@ var ReservationService = (function () {
       res.pdfFileId || '',
       res.pdfFileUrl || '',
       res.emailSentAt || '',
-      Utils.sanitizeSheetCell(res.lastError || '')
+      Utils.sanitizeSheetCell(res.lastError || ''),
+      Utils.sanitizeSheetCell(res.companionGuests || ''),
+      Utils.sanitizeSheetCell(res.validIdFileIds || '')
     ];
   }
 
@@ -248,7 +252,9 @@ var ReservationService = (function () {
       pdfFileId: '',
       pdfFileUrl: '',
       emailSentAt: '',
-      lastError: ''
+      lastError: '',
+      companionGuests: validatedData.companionGuests || '',
+      validIdFileIds: validatedData.validIdFileIds || ''
     };
 
     var nextRow = Math.max(sheet.getLastRow() + 1, 2);
@@ -261,6 +267,7 @@ var ReservationService = (function () {
     sheet.getRange(nextRow, C.NUMBER_OF_ROOMS).setNumberFormat('@');
     sheet.getRange(nextRow, C.CHECK_IN_DATE).setNumberFormat('@');
     sheet.getRange(nextRow, C.CHECK_OUT_DATE).setNumberFormat('@');
+    sheet.getRange(nextRow, C.VALID_ID_FILE_IDS).setNumberFormat('@');
 
     sheet.getRange(nextRow, 1, 1, Config.RESERVATION_HEADERS.length)
       .setValues([reservationToRow(reservation)]);
@@ -292,6 +299,7 @@ var ReservationService = (function () {
     sheet.getRange(rowIdx, C.CHECK_IN_DATE).setNumberFormat('@');
     sheet.getRange(rowIdx, C.CHECK_OUT_DATE).setNumberFormat('@');
     sheet.getRange(rowIdx, C.PDF_FILE_ID).setNumberFormat('@');
+    sheet.getRange(rowIdx, C.VALID_ID_FILE_IDS).setNumberFormat('@');
     sheet.getRange(rowIdx, 1, 1, Config.RESERVATION_HEADERS.length)
       .setValues([reservationToRow(merged)]);
 

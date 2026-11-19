@@ -160,6 +160,14 @@ var ValidationService = (function () {
       errors.push('Special Requests must not exceed ' + Config.LIMITS.MAX_SPECIAL_REQUESTS_LENGTH + ' characters.');
     }
 
+    var companionGuests = Utils.normalizeText(data.companionGuests);
+    if (companionGuests.length > 1000) {
+      errors.push('Companion / Other Guest Names must not exceed 1000 characters.');
+    }
+
+    var parsedIdList = Utils.extractDriveFileIds(data.validIdFileIds);
+    var validIdFileIds = parsedIdList.join(', ');
+
     var agreeRes = validateAgreement(data.agreedToHouseRules);
     if (!agreeRes.valid) errors.push(agreeRes.error);
 
@@ -175,6 +183,8 @@ var ValidationService = (function () {
         numberOfGuests: guestsRes.valid ? guestsRes.value : 0,
         numberOfRooms: rooms,
         specialRequests: specialRequests,
+        companionGuests: companionGuests,
+        validIdFileIds: validIdFileIds,
         agreedToHouseRules: agreeRes.valid
       }
     };
@@ -265,6 +275,18 @@ var ValidationService = (function () {
       } else {
         var check = validateEmailAddress(stayEmail);
         if (!check.valid) errors.push('Staycation Email Address: ' + check.error);
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(map, K.PMO_CONCIERGE_EMAIL)) {
+      var pmoRaw = String(map[K.PMO_CONCIERGE_EMAIL] || '').trim();
+      if (pmoRaw && !Config.isUnconfiguredValue(pmoRaw)) {
+        var pmoList = Config.parseAdminEmails(pmoRaw);
+        for (var p = 0; p < pmoList.length; p++) {
+          if (!validateEmailAddress(pmoList[p]).valid) {
+            errors.push('Invalid PMO / Concierge Email: ' + pmoList[p]);
+          }
+        }
       }
     }
 

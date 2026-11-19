@@ -46,6 +46,8 @@ var FormHandler = (function () {
       checkOutDate: findNamedField(map, [F.CHECK_OUT_DATE, 'Check-Out Date']),
       numberOfGuests: findNamedField(map, [F.NUMBER_OF_GUESTS, 'Guests']),
       numberOfRooms: findNamedField(map, [F.NUMBER_OF_ROOMS, 'Rooms']),
+      companionGuests: findNamedField(map, [F.COMPANION_GUESTS, 'Companion Guests', 'Other Guest Names', 'Guest Names', 'List of Guests']),
+      validIdFileIds: findNamedField(map, [F.VALID_ID_UPLOAD, 'Upload Valid ID', 'Upload Valid ID(s)', 'Valid ID', 'Valid ID(s)', 'Government ID', 'ID Upload', 'Upload ID']),
       specialRequests: findNamedField(map, [F.SPECIAL_REQUESTS, 'Requests']),
       agreedToHouseRules: findNamedField(map, [F.AGREEMENT, 'House Rules'])
     };
@@ -256,6 +258,16 @@ var FormHandler = (function () {
         submittedAt: submissionTime,
         adminRemarks: adminRemarks
       }, spreadsheet);
+
+      // Ensure uploaded guest Valid ID files remain PRIVATE in Drive
+      var uploadedIds = Utils.extractDriveFileIds(sanitized.validIdFileIds);
+      for (var idIdx = 0; idIdx < uploadedIds.length; idIdx++) {
+        try {
+          SecurityService.enforcePrivateFilePermissions(uploadedIds[idIdx]);
+        } catch (idPrivErr) {
+          Logger.log('Note: Could not enforce PRIVATE sharing on uploaded ID "' + uploadedIds[idIdx] + '": ' + idPrivErr);
+        }
+      }
 
       if (extracted.formResponseId && cache) {
         cache.put(

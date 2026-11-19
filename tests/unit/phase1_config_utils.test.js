@@ -11,12 +11,14 @@ test('Phase 1: Config defines exact frozen schema headers and constants', () => 
   const { Config } = env.ctx;
   assert.equal(Config.DEFAULT_TIMEZONE, 'Asia/Manila');
   assert.equal(Config.MENU_TITLE, 'STAYCATION MANAGEMENT');
-  assert.equal(Config.RESERVATION_HEADERS.length, 20);
+  assert.equal(Config.RESERVATION_HEADERS.length, 22);
   assert.equal(Config.RESERVATION_HEADERS[0], 'Reservation ID');
   assert.equal(Config.RESERVATION_HEADERS[19], 'Last Error');
+  assert.equal(Config.RESERVATION_HEADERS[20], 'Companion Guests');
+  assert.equal(Config.RESERVATION_HEADERS[21], 'Valid ID File IDs');
   assert.equal(Config.EMAIL_LOG_HEADERS.length, 10);
   assert.equal(Config.ACTIVITY_LOG_HEADERS.length, 9);
-  assert.equal(Config.DEFAULT_SETTINGS_ROWS.length, 11);
+  assert.equal(Config.DEFAULT_SETTINGS_ROWS.length, 13);
 
   assert.equal(Config.isUnconfiguredValue('[CONFIGURE: Staycation Name]'), true);
   assert.equal(Config.isUnconfiguredValue(''), true);

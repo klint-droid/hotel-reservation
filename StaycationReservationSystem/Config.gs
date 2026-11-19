@@ -22,7 +22,7 @@ var Config = (function () {
     SYSTEM_INTEGRITY: '_SystemIntegrity'
   });
 
-  // Exact 1-based column indices for Sheet 1: Reservations (Columns A-T)
+  // Exact 1-based column indices for Sheet 1: Reservations (Columns A-V)
   var RESERVATION_COLS = Object.freeze({
     RESERVATION_ID: 1,    // A
     REFERENCE_NUMBER: 2,  // B
@@ -43,7 +43,9 @@ var Config = (function () {
     PDF_FILE_ID: 17,      // Q
     PDF_FILE_URL: 18,     // R
     EMAIL_SENT_AT: 19,    // S
-    LAST_ERROR: 20        // T
+    LAST_ERROR: 20,       // T
+    COMPANION_GUESTS: 21, // U
+    VALID_ID_FILE_IDS: 22 // V
   });
 
   var RESERVATION_HEADERS = Object.freeze([
@@ -66,7 +68,9 @@ var Config = (function () {
     'PDF File ID',
     'PDF File URL',
     'Email Sent At',
-    'Last Error'
+    'Last Error',
+    'Companion Guests',
+    'Valid ID File IDs'
   ]);
 
   // Columns whose values appear on the endorsement certificate / affect endorsed details.
@@ -78,7 +82,9 @@ var Config = (function () {
     RESERVATION_COLS.CHECK_IN_DATE,
     RESERVATION_COLS.CHECK_OUT_DATE,
     RESERVATION_COLS.NUMBER_OF_GUESTS,
-    RESERVATION_COLS.NUMBER_OF_ROOMS
+    RESERVATION_COLS.NUMBER_OF_ROOMS,
+    RESERVATION_COLS.COMPANION_GUESTS,
+    RESERVATION_COLS.VALID_ID_FILE_IDS
   ]);
 
   // System-managed columns protected from manual spreadsheet editing.
@@ -93,7 +99,8 @@ var Config = (function () {
     RESERVATION_COLS.PDF_FILE_ID,
     RESERVATION_COLS.PDF_FILE_URL,
     RESERVATION_COLS.EMAIL_SENT_AT,
-    RESERVATION_COLS.LAST_ERROR
+    RESERVATION_COLS.LAST_ERROR,
+    RESERVATION_COLS.VALID_ID_FILE_IDS
   ]);
 
   // Exact 1-based column indices for Sheet 2: Email Logs (Columns A-J)
@@ -196,6 +203,8 @@ var Config = (function () {
 
   var SETTINGS_KEYS = Object.freeze({
     STAYCATION_NAME: 'STAYCATION_NAME',
+    UNIT_LOCATION: 'UNIT_LOCATION',
+    PMO_CONCIERGE_EMAIL: 'PMO_CONCIERGE_EMAIL',
     STAYCATION_LOGO_URL: 'STAYCATION_LOGO_URL',
     STAYCATION_CONTACT_NUMBER: 'STAYCATION_CONTACT_NUMBER',
     STAYCATION_EMAIL_ADDRESS: 'STAYCATION_EMAIL_ADDRESS',
@@ -214,6 +223,18 @@ var Config = (function () {
       '[CONFIGURE: Staycation Name]',
       'Official name of your staycation property displayed on certificates and emails.',
       'YES'
+    ],
+    [
+      SETTINGS_KEYS.UNIT_LOCATION,
+      '[CONFIGURE: e.g., Unit 3702, Novotel Tower]',
+      'Condo unit number and building/tower name used in PMO/Concierge endorsement emails.',
+      'NO'
+    ],
+    [
+      SETTINGS_KEYS.PMO_CONCIERGE_EMAIL,
+      '[CONFIGURE: PMO / Concierge Email(s), comma-separated]',
+      'Condo PMO / Concierge email recipient(s) for endorsement emails (guest is automatically CC\'d).',
+      'NO'
     ],
     [
       SETTINGS_KEYS.STAYCATION_LOGO_URL,
@@ -292,6 +313,8 @@ var Config = (function () {
       CHECK_OUT_DATE: 'Check-out Date',
       NUMBER_OF_GUESTS: 'Number of Guests',
       NUMBER_OF_ROOMS: 'Number of Rooms',
+      COMPANION_GUESTS: 'Companion / Other Guest Names',
+      VALID_ID_UPLOAD: 'Valid ID Upload',
       SPECIAL_REQUESTS: 'Special Requests',
       AGREEMENT: 'Agreement to House Rules'
     }),
@@ -319,8 +342,11 @@ var Config = (function () {
 
   var PLACEHOLDERS = Object.freeze({
     STAYCATION_NAME: '{{STAYCATION_NAME}}',
+    UNIT_LOCATION: '{{UNIT_LOCATION}}',
     STAYCATION_LOGO: '{{STAYCATION_LOGO}}',
     GUEST_NAME: '{{GUEST_NAME}}',
+    COMPANION_GUESTS: '{{COMPANION_GUESTS}}',
+    ALL_GUESTS: '{{ALL_GUESTS}}',
     REFERENCE_NUMBER: '{{REFERENCE_NUMBER}}',
     CHECK_IN_DATE: '{{CHECK_IN_DATE}}',
     CHECK_IN_TIME: '{{CHECK_IN_TIME}}',
@@ -456,6 +482,9 @@ var Config = (function () {
     return {
       raw: rawMap,
       staycationName: rawMap[SETTINGS_KEYS.STAYCATION_NAME] || '',
+      unitLocation: rawMap[SETTINGS_KEYS.UNIT_LOCATION] || '',
+      pmoConciergeEmailRaw: rawMap[SETTINGS_KEYS.PMO_CONCIERGE_EMAIL] || '',
+      pmoConciergeEmails: parseAdminEmails(rawMap[SETTINGS_KEYS.PMO_CONCIERGE_EMAIL]),
       staycationLogoUrl: rawMap[SETTINGS_KEYS.STAYCATION_LOGO_URL] || '',
       staycationContactNumber: rawMap[SETTINGS_KEYS.STAYCATION_CONTACT_NUMBER] || '',
       staycationEmailAddress: rawMap[SETTINGS_KEYS.STAYCATION_EMAIL_ADDRESS] || '',

@@ -100,11 +100,12 @@
 
   <div class="meta-card">
     <div class="meta-row"><span class="meta-label">Guest:</span><span id="guestName"></span></div>
-    <div class="meta-row"><span class="meta-label">Email:</span><span id="recipientEmail"></span></div>
+    <div class="meta-row"><span class="meta-label">To:</span><span id="recipientEmail"></span></div>
+    <div class="meta-row" id="ccRow" style="display:none;"><span class="meta-label">CC (Guest):</span><span id="ccEmail"></span></div>
     <div class="meta-row"><span class="meta-label">Reference:</span><strong id="referenceNumber"></strong></div>
     <div class="meta-row"><span class="meta-label">Subject:</span><span id="emailSubject"></span></div>
     <div class="meta-row">
-      <span class="meta-label">Attachment:</span>
+      <span class="meta-label">Attachments:</span>
       <span id="pdfFileName"></span>
       (<a id="pdfLink" target="_blank" rel="noopener noreferrer">Preview PDF</a>)
     </div>
@@ -129,9 +130,16 @@
 
     document.getElementById('guestName').textContent = PREVIEW.guestName || '';
     document.getElementById('recipientEmail').textContent = PREVIEW.recipientEmail || '';
+    if (PREVIEW.ccEmail) {
+      document.getElementById('ccEmail').textContent = PREVIEW.ccEmail;
+      document.getElementById('ccRow').style.display = 'block';
+    }
     document.getElementById('referenceNumber').textContent = PREVIEW.referenceNumber || '';
     document.getElementById('emailSubject').textContent = PREVIEW.subject || '';
-    document.getElementById('pdfFileName').textContent = PREVIEW.pdfFileName || '';
+    var attachSummary = Array.isArray(PREVIEW.attachmentNames) && PREVIEW.attachmentNames.length > 0
+      ? PREVIEW.attachmentNames.join(', ')
+      : (PREVIEW.pdfFileName || '');
+    document.getElementById('pdfFileName').textContent = attachSummary;
 
     var pdfLink = document.getElementById('pdfLink');
     if (isSafeGoogleUrl(PREVIEW.pdfFileUrl)) {

@@ -30,6 +30,10 @@ function formatDateInTimezone(dateObj, timeZone, pattern) {
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
+  const shortMonthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
   const monthIdx = parseInt(map.month, 10) - 1;
   const dayNoPad = String(parseInt(map.day, 10));
 
@@ -44,6 +48,9 @@ function formatDateInTimezone(dateObj, timeZone, pattern) {
   }
   if (pattern === 'MMMM d, yyyy') {
     return `${monthNames[monthIdx]} ${dayNoPad}, ${map.year}`;
+  }
+  if (pattern === 'MMM d') {
+    return `${shortMonthNames[monthIdx]} ${dayNoPad}`;
   }
   return `${map.year}-${map.month}-${map.day} ${hour24}:${map.minute}:${map.second}`;
 }
@@ -701,7 +708,12 @@ function createGasMockRuntime(options = {}) {
         const buf = crypto.createHash('sha256').update(String(input), 'utf8').digest();
         return Array.from(buf).map((b) => (b > 127 ? b - 256 : b));
       },
-      base64Encode: (str) => Buffer.from(String(str), 'utf8').toString('base64'),
+      base64Encode: (data) => {
+        if (Array.isArray(data)) {
+          return Buffer.from(data.map((b) => (b < 0 ? b + 256 : b))).toString('base64');
+        }
+        return Buffer.from(String(data), 'utf8').toString('base64');
+      },
       newBlob: (data, contentType, name) => createBlob(data, contentType, name)
     },
     PropertiesService: {
@@ -821,6 +833,7 @@ function createGasMockRuntime(options = {}) {
           _requireLogin: false,
           getId: () => form._id,
           getTitle: () => form._title,
+          getItems: () => form._items.map((it) => ({ getTitle: () => it.title })),
           getPublishedUrl: () => `https://docs.google.com/forms/d/e/${form._id}/viewform`,
           getEditUrl: () => `https://docs.google.com/forms/d/${form._id}/edit`,
           setDescription: (d) => { form._description = d; return form; },

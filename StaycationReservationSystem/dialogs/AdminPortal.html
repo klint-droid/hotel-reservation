@@ -604,6 +604,14 @@
                   <input id="S_STAYCATION_NAME" type="text" required>
                 </div>
                 <div class="field">
+                  <label for="S_UNIT_LOCATION">Unit / Tower Location (for PMO Email)</label>
+                  <input id="S_UNIT_LOCATION" type="text" placeholder="e.g., Unit 3702, Novotel Tower">
+                </div>
+                <div class="field">
+                  <label for="S_PMO_CONCIERGE_EMAIL">PMO / Concierge Email(s)</label>
+                  <input id="S_PMO_CONCIERGE_EMAIL" type="text" placeholder="pmo@building.com (Guest is auto-CC'd)">
+                </div>
+                <div class="field">
                   <label for="S_STAYCATION_CONTACT_NUMBER">Contact Number *</label>
                   <input id="S_STAYCATION_CONTACT_NUMBER" type="text" required>
                 </div>
@@ -679,6 +687,8 @@
 
     var SETTINGS_KEYS = [
       'STAYCATION_NAME',
+      'UNIT_LOCATION',
+      'PMO_CONCIERGE_EMAIL',
       'STAYCATION_LOGO_URL',
       'STAYCATION_CONTACT_NUMBER',
       'STAYCATION_EMAIL_ADDRESS',
@@ -866,6 +876,12 @@
         var tdParty = el('td');
         tdParty.appendChild(el('div', 'cell-main', String(r.numberOfGuests || 0) + ' guest(s)'));
         tdParty.appendChild(el('div', 'cell-sub', 'Rooms: ' + (r.numberOfRooms || 'N/A')));
+        var idIds = parseIdFileList(r.validIdFileIds);
+        if (idIds.length > 0) {
+          var idBadge = el('span', 'badge badge-APPROVED', idIds.length + ' ID(s) uploaded');
+          idBadge.style.marginTop = '4px';
+          tdParty.appendChild(idBadge);
+        }
         tr.appendChild(tdParty);
 
         // 5. Approval Status
@@ -1043,17 +1059,44 @@
       document.getElementById('modalBackdrop').classList.remove('open');
     }
 
+    function parseIdFileList(rawIds) {
+      if (!rawIds) return [];
+      return String(rawIds).split(/[,\s;]+/).map(function (s) { return s.trim(); }).filter(function (s) {
+        return /^[a-zA-Z0-9_-]{8,}$/.test(s);
+      });
+    }
+
+    function buildIdLinksNode(rawIds) {
+      var ids = parseIdFileList(rawIds);
+      var wrap = el('div', 'action-row');
+      if (ids.length === 0) {
+        wrap.textContent = '(No ID uploaded)';
+        return wrap;
+      }
+      ids.forEach(function (fid, idx) {
+        var link = el('a', 'btn btn-outline btn-sm', 'View ID ' + (idx + 1));
+        link.href = 'https://drive.google.com/file/d/' + encodeURIComponent(fid) + '/view';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        wrap.appendChild(link);
+      });
+      return wrap;
+    }
+
     function buildSummaryBox(r) {
       var box = el('div', 'summary-box');
       var grid = el('div', 'summary-grid');
       var items = [
         ['Reference:', r.referenceNumber],
-        ['Guest:', r.guestName],
+        ['Primary Guest:', r.guestName],
         ['Email:', r.emailAddress],
         ['Contact:', r.contactNumber],
         ['Stay Dates:', (r.checkInDate || '') + ' to ' + (r.checkOutDate || '')],
         ['Guests / Rooms:', String(r.numberOfGuests) + ' guest(s) / ' + (r.numberOfRooms || 'N/A')]
       ];
+      if (r.companionGuests) {
+        items.push(['Other Guests:', r.companionGuests]);
+      }
       if (r.specialRequests) {
         items.push(['Special Requests:', r.specialRequests]);
       }
@@ -1061,6 +1104,8 @@
         grid.appendChild(el('div', 'summary-lbl', pair[0]));
         grid.appendChild(el('div', '', pair[1]));
       });
+      grid.appendChild(el('div', 'summary-lbl', 'Uploaded ID(s):'));
+      grid.appendChild(buildIdLinksNode(r.validIdFileIds));
       box.appendChild(grid);
       return box;
     }
@@ -1263,6 +1308,7 @@
           ['Check-out Date:', r.checkOutDate],
           ['Guests:', String(r.numberOfGuests)],
           ['Rooms:', r.numberOfRooms || 'Not Applicable'],
+          ['Other Guests:', r.companionGuests || '(None)'],
           ['Special Requests:', r.specialRequests || '(None)'],
           ['Submitted At:', r.submittedAt || '—'],
           ['Approved At:', r.approvedAt || '—'],
@@ -1275,6 +1321,8 @@
           grid.appendChild(el('div', 'summary-lbl', p[0]));
           grid.appendChild(el('div', '', p[1]));
         });
+        grid.appendChild(el('div', 'summary-lbl', 'Uploaded ID(s):'));
+        grid.appendChild(buildIdLinksNode(r.validIdFileIds));
         box.appendChild(grid);
         body.appendChild(box);
       }, buttons);

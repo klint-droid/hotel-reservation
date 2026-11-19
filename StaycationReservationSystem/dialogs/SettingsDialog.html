@@ -94,6 +94,16 @@
       </div>
       <div class="row-2">
         <div class="field">
+          <label for="UNIT_LOCATION">Unit / Tower Location (PMO Email)</label>
+          <input id="UNIT_LOCATION" name="UNIT_LOCATION" type="text" placeholder="e.g., Unit 3702, Novotel Tower">
+        </div>
+        <div class="field">
+          <label for="PMO_CONCIERGE_EMAIL">PMO / Concierge Email(s)</label>
+          <input id="PMO_CONCIERGE_EMAIL" name="PMO_CONCIERGE_EMAIL" type="text" placeholder="pmo@building.com (Guest auto-CC'd)">
+        </div>
+      </div>
+      <div class="row-2">
+        <div class="field">
           <label for="STAYCATION_CONTACT_NUMBER">Staycation Contact Number *</label>
           <input id="STAYCATION_CONTACT_NUMBER" name="STAYCATION_CONTACT_NUMBER" type="text" required>
         </div>
@@ -163,6 +173,8 @@
     var INIT = <?!= settingsJson ?>;
     var KEYS = [
       'STAYCATION_NAME',
+      'UNIT_LOCATION',
+      'PMO_CONCIERGE_EMAIL',
       'STAYCATION_LOGO_URL',
       'STAYCATION_CONTACT_NUMBER',
       'STAYCATION_EMAIL_ADDRESS',

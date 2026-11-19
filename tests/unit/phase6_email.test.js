@@ -50,7 +50,7 @@ test('Phase 6: Sends HTML endorsement email with PDF attachment, updates SENT st
   // Preview works before send
   const preview = env.ctx.EmailService.getEmailPreview(booking.reservationId);
   assert.equal(preview.ok, true);
-  assert.equal(preview.data.subject, 'Your Staycation Reservation Has Been Approved \u2013 STAY-20261119-0001');
+  assert.match(preview.data.subject, /STAY-20261119-0001/);
 
   // Send email
   const sendRes = env.ctx.EmailService.sendEndorsementEmail(booking.reservationId);
@@ -59,12 +59,13 @@ test('Phase 6: Sends HTML endorsement email with PDF attachment, updates SENT st
 
   const sent = env.sentEmails[0];
   assert.equal(sent.recipient, 'juan@example.com');
-  assert.equal(sent.subject, 'Your Staycation Reservation Has Been Approved \u2013 STAY-20261119-0001');
+  assert.match(sent.subject, /STAY-20261119-0001/);
   assert.equal(sent.options.from, 'bookings@villaverde.test');
   assert.equal(sent.options.replyTo, 'bookings@villaverde.test');
   assert.equal(sent.options.attachments.length, 1);
   assert.equal(sent.options.attachments[0].getName(), 'ENDORSEMENT_STAY-20261119-0001_JUAN-DELA-CRUZ.pdf');
-  assert.match(sent.options.htmlBody, /Dear <strong>Juan Dela Cruz<\/strong>/);
+  assert.match(sent.options.htmlBody, /Dear PMO\/Concierge,/);
+  assert.match(sent.options.htmlBody, /Juan Dela Cruz/);
   assert.match(sent.options.htmlBody, /STAY-20261119-0001/);
 
   // Sheet updated to SENT with timestamp

@@ -212,11 +212,12 @@ test('AUDIT [MEDIUM-6 & MEDIUM-8 & LOW-1]: Non-private output folder blocked, e.
     new Date('2026-12-08T00:00:00+08:00'),
     3,
     '1',
+    '',
     'None',
     'I have read and agree to the Staycation House Rules.'
   ]);
   const lastRow = rawSheet.getLastRow();
-  const rangeEvent = { range: rawSheet.getRange(lastRow, 1, 1, 10) };
+  const rangeEvent = { range: rawSheet.getRange(lastRow, 1, 1, 11) };
   const fromRange = env.ctx.onFormSubmitTrigger(rangeEvent);
   assert.equal(fromRange.ok, true);
   assert.equal(fromRange.data.checkInDate, '2026-12-05');

@@ -34,7 +34,7 @@ test('Phase 2: SetupService.runFullSetup creates all 4 sheets with exact schemas
 
   // Exact headers
   assert.deepEqual(
-    reservations.getRange(1, 1, 1, 20).getValues()[0],
+    reservations.getRange(1, 1, 1, 22).getValues()[0],
     Array.from(env.ctx.Config.RESERVATION_HEADERS)
   );
   assert.deepEqual(
@@ -50,19 +50,21 @@ test('Phase 2: SetupService.runFullSetup creates all 4 sheets with exact schemas
   assert.equal(reservations.getFrozenRows(), 1);
   assert.ok(reservations.getFilter());
   assert.equal(reservations.getConditionalFormatRules().length, 6);
-  assert.equal(reservations.getProtections().length, 11);
+  assert.equal(reservations.getProtections().length, 12);
 
   // Form configuration
   const form = env.formsRegistry.get(res.data.registrationForm.formId);
   assert.equal(form._title, 'Staycation Reservation Registration');
   assert.equal(form._requireLogin, false);
-  assert.equal(form._items.length, 9);
+  assert.equal(form._items.length, 10);
   assert.equal(form._items[0].title, 'Full Name');
   assert.equal(form._items[0].required, true);
   assert.equal(form._items[6].title, 'Number of Rooms');
   assert.equal(form._items[6].required, false);
-  assert.equal(form._items[8].title, 'Agreement to House Rules');
-  assert.equal(form._items[8].required, true);
+  assert.equal(form._items[7].title, 'Companion / Other Guest Names');
+  assert.equal(form._items[7].required, false);
+  assert.equal(form._items[9].title, 'Agreement to House Rules');
+  assert.equal(form._items[9].required, true);
 
   // Private Drive Folder & Docs Template created & stored in Settings
   const folder = env.driveFolders.get(res.data.outputFolder.folderId);

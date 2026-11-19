@@ -1,7 +1,9 @@
 /**
  * EmailService.gs
- * Handles pre-send validation, hotel-styled HTML + plain-text email rendering,
- * PDF attachment, locked idempotent Gmail delivery, and failure logging.
+ * Handles pre-send validation, PMO/Concierge Guest Endorsement HTML + plain-text
+ * rendering with inline uploaded Guest Valid ID photos directly below "Thank you.",
+ * attaching both the generated Endorsement PDF and original Guest ID file(s),
+ * CC'ing the guest, locked idempotent Gmail delivery, and failure logging.
  *
  * Enforced Business Rules:
  * - Only triggered explicitly by an authorized administrator.
@@ -14,9 +16,88 @@
  */
 
 var EmailService = (function () {
-  function renderEndorsementEmail(reservation, settings) {
+  function parseGuestList(reservation) {
+    var guests = [];
+    if (reservation.guestName) {
+      guests.push(Utils.normalizeText(reservation.guestName));
+    }
+    if (reservation.companionGuests) {
+      var parts = String(reservation.companionGuests).split(/[\n,;]+/);
+      for (var i = 0; i < parts.length; i++) {
+        var name = Utils.normalizeText(parts[i]);
+        if (name && guests.indexOf(name) === -1) {
+          guests.push(name);
+        }
+      }
+    }
+    return guests;
+  }
+
+  function resolveRecipients(reservation, settings) {
+    var guestEmail = Utils.normalizeEmail(reservation.emailAddress);
+    var pmoEmails = (settings && settings.pmoConciergeEmails) || [];
+
+    if (pmoEmails.length > 0) {
+      var ccEmail = pmoEmails.indexOf(guestEmail) === -1 ? guestEmail : '';
+      return {
+        to: pmoEmails.join(', '),
+        cc: ccEmail,
+        isPmoRecipient: true
+      };
+    }
+
+    return {
+      to: guestEmail,
+      cc: '',
+      isPmoRecipient: false
+    };
+  }
+
+  /**
+   * Loads uploaded guest Valid ID files from Google Drive for inline display & attachment.
+   */
+  function collectGuestIdFiles(reservation) {
+    var fileIds = Utils.extractDriveFileIds(reservation.validIdFileIds);
+    var results = [];
+
+    for (var i = 0; i < fileIds.length; i++) {
+      var fid = fileIds[i];
+      try {
+        var file = DriveApp.getFileById(fid);
+        if (file.isTrashed()) {
+          Logger.log('Note: Uploaded ID file "' + fid + '" is trashed; skipping.');
+          continue;
+        }
+        var blob = file.getBlob();
+        var mimeType = String(blob.getContentType() || file.getMimeType() || '').toLowerCase();
+        var isImage = /^image\/(jpeg|jpg|png|gif|webp)$/i.test(mimeType);
+        results.push({
+          fileId: fid,
+          fileName: file.getName(),
+          fileUrl: file.getUrl(),
+          mimeType: mimeType,
+          isImage: isImage,
+          cid: isImage ? ('guest_id_' + results.length) : '',
+          blob: blob
+        });
+      } catch (err) {
+        Logger.log('Warning: Could not load uploaded Guest ID "' + fid + '": ' + Utils.redactSensitiveText(err.message, 200));
+      }
+    }
+
+    return results;
+  }
+
+  function renderEndorsementEmail(reservation, settings, idFiles, options) {
+    var opts = options || {};
     var tz = (settings && settings.timezone) || Config.DEFAULT_TIMEZONE;
     var stayName = settings.staycationName;
+    var unitLocation = Config.isUnconfiguredValue(settings.unitLocation)
+      ? stayName
+      : settings.unitLocation;
+
+    var checkInShort = Utils.formatShortDate(reservation.checkInDate, tz);
+    var checkOutShort = Utils.formatShortDate(reservation.checkOutDate, tz);
     var checkInDisplay = Utils.formatDisplayDate(reservation.checkInDate, tz);
     var checkOutDisplay = Utils.formatDisplayDate(reservation.checkOutDate, tz);
     var checkInTime = settings.checkInTime || '2:00 PM';
@@ -25,92 +106,116 @@ var EmailService = (function () {
       ? ''
       : settings.staycationFacebookPage;
 
-    var subject = 'Your Staycation Reservation Has Been Approved \u2013 ' + reservation.referenceNumber;
+    var guests = parseGuestList(reservation);
+    var uploadedIds = Array.isArray(idFiles) ? idFiles : [];
 
+    var subject = 'Guest Endorsement \u2013 ' + unitLocation +
+      ' (' + checkInShort + ' \u2013 ' + checkOutShort + ') \u2013 ' + reservation.referenceNumber;
+
+    // Plain-text fallback
     var plainLines = [
-      'Dear ' + reservation.guestName + ',',
+      'Dear PMO/Concierge,',
       '',
-      'Good day!',
+      'This is to confirm that I am allowing the following guests to stay at ' + unitLocation +
+        ' from ' + checkInShort + ' (' + checkInTime + ') to ' + checkOutShort + ' (' + checkOutTime + ').',
       '',
-      'We are pleased to inform you that your staycation reservation has been reviewed and approved.',
-      'Please find your Reservation Endorsement Certificate attached to this email.',
-      '',
-      'Here are your reservation details:',
-      'Reservation Reference: ' + reservation.referenceNumber,
-      'Check-in: ' + checkInDisplay + ' (' + checkInTime + ')',
-      'Check-out: ' + checkOutDisplay + ' (' + checkOutTime + ')',
-      'Number of Guests: ' + reservation.numberOfGuests,
-      'Number of Rooms: ' + (reservation.numberOfRooms || 'Not Applicable'),
-      '',
-      'Kindly present your endorsement certificate upon arrival for verification.',
-      'If you have any questions or concerns, please contact us through our official contact details.',
-      '',
-      'Contact Information:',
-      'Contact Number: ' + settings.staycationContactNumber,
-      'Email: ' + settings.staycationEmailAddress
+      'Guest(s):'
     ];
+    for (var g = 0; g < guests.length; g++) {
+      plainLines.push('- ' + guests[g]);
+    }
+    plainLines.push('');
+    plainLines.push('Reservation Reference: ' + reservation.referenceNumber);
+    plainLines.push('Stay Dates: ' + checkInDisplay + ' (' + checkInTime + ') to ' + checkOutDisplay + ' (' + checkOutTime + ')');
+    plainLines.push('Number of Guests: ' + reservation.numberOfGuests);
+    plainLines.push('Number of Rooms: ' + (reservation.numberOfRooms || 'Not Applicable'));
+    plainLines.push('');
+    plainLines.push('They will present their ids upon arrival for verification. Kindly assist them with check-in and grant access to the unit during their stay.');
+    plainLines.push('');
+    plainLines.push('If you require anything further, please let me know.');
+    plainLines.push('');
+    plainLines.push('Thank you.');
+    plainLines.push('');
+    if (uploadedIds.length > 0) {
+      plainLines.push('Attached Guest ID(s): ' + uploadedIds.map(function (f) { return f.fileName; }).join(', '));
+      plainLines.push('');
+    }
+    plainLines.push('---');
+    plainLines.push(stayName);
+    plainLines.push('Contact Number: ' + settings.staycationContactNumber);
+    plainLines.push('Email: ' + settings.staycationEmailAddress);
     if (fbPage) {
       plainLines.push('Facebook Page: ' + fbPage);
     }
-    plainLines.push('');
-    plainLines.push('Thank you for choosing ' + stayName + '!');
-    plainLines.push('');
-    plainLines.push('Best regards,');
-    plainLines.push(stayName + ' Management');
 
+    // Clean HTML matching the PMO/Concierge endorsement letter format with inline ID image(s) directly below "Thank you."
     var e = Utils.escapeHtml;
-    var B = Config.BRAND_COLORS;
+    var guestListHtml = '';
+    for (var gi = 0; gi < guests.length; gi++) {
+      guestListHtml += '<li style="margin:2px 0;"><strong>' + e(guests[gi]) + '</strong></li>';
+    }
 
-    var fbHtmlRow = fbPage
-      ? '<tr><td style="padding:3px 0;color:#5C636A;">Facebook Page:</td><td style="padding:3px 0 3px 10px;color:#2B2D2F;">' + e(fbPage) + '</td></tr>'
-      : '';
+    var inlineIdBlocks = [];
+    for (var k = 0; k < uploadedIds.length; k++) {
+      var idItem = uploadedIds[k];
+      if (idItem.isImage && idItem.cid) {
+        var imgSrc = 'cid:' + idItem.cid;
+        if (opts.useDataUriForPreview && idItem.blob && idItem.blob.getBytes) {
+          try {
+            var b64 = Utilities.base64Encode(idItem.blob.getBytes());
+            imgSrc = 'data:' + idItem.mimeType + ';base64,' + b64;
+          } catch (b64Err) {
+            imgSrc = 'cid:' + idItem.cid;
+          }
+        }
+        inlineIdBlocks.push(
+          '<div style="margin:14px 0 10px 0;">' +
+          '<img src="' + imgSrc + '" alt="' + e(idItem.fileName || 'Guest Valid ID') + '" ' +
+          'style="display:block;max-width:540px;width:100%;height:auto;border:1px solid #D9D9D9;border-radius:4px;">' +
+          '</div>'
+        );
+      } else {
+        inlineIdBlocks.push(
+          '<p style="margin:10px 0;font-size:13px;color:#444444;"><em>Attached Valid ID Document: ' +
+          e(idItem.fileName) + '</em></p>'
+        );
+      }
+    }
+
+    var footerContacts = [
+      '<strong>' + e(stayName) + '</strong>',
+      'Contact: ' + e(settings.staycationContactNumber) + ' &bull; Email: ' + e(settings.staycationEmailAddress)
+    ];
+    if (fbPage) {
+      footerContacts.push('Facebook: ' + e(fbPage));
+    }
 
     var htmlBody = [
       '<!DOCTYPE html>',
       '<html lang="en"><head><meta charset="utf-8"></head>',
-      '<body style="margin:0;padding:0;background-color:' + B.WARM_BEIGE + ';font-family:Arial,Helvetica,sans-serif;color:' + B.CHARCOAL + ';">',
-      '  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:' + B.WARM_BEIGE + ';padding:24px 12px;">',
-      '    <tr><td align="center">',
-      '      <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;width:100%;background-color:' + B.WHITE + ';border-radius:8px;overflow:hidden;border:1px solid #DFD8CC;">',
-      '        <tr>',
-      '          <td style="background-color:' + B.DARK_GREEN + ';padding:26px 28px;text-align:center;border-bottom:4px solid ' + B.GOLD + ';">',
-      '            <div style="font-family:Georgia,serif;font-size:22px;font-weight:bold;color:' + B.WHITE + ';letter-spacing:0.6px;">' + e(stayName) + '</div>',
-      '            <div style="font-size:12px;color:' + B.GOLD + ';letter-spacing:2px;margin-top:6px;text-transform:uppercase;font-weight:bold;">Reservation Confirmation &amp; Endorsement</div>',
-      '          </td>',
-      '        </tr>',
-      '        <tr>',
-      '          <td style="padding:28px 30px;font-size:14px;line-height:1.6;color:' + B.CHARCOAL + ';">',
-      '            <p style="margin:0 0 12px 0;">Dear <strong>' + e(reservation.guestName) + '</strong>,</p>',
-      '            <p style="margin:0 0 14px 0;">Good day!</p>',
-      '            <p style="margin:0 0 10px 0;">We are pleased to inform you that your staycation reservation has been reviewed and approved.</p>',
-      '            <p style="margin:0 0 18px 0;">Please find your <strong>Reservation Endorsement Certificate</strong> attached to this email.</p>',
-      '            <div style="background-color:' + B.WARM_BEIGE + ';border:1px solid ' + B.GOLD + ';border-radius:6px;padding:16px 20px;margin:18px 0;">',
-      '              <div style="font-family:Georgia,serif;font-size:15px;font-weight:bold;color:' + B.DARK_GREEN + ';margin-bottom:10px;">Here are your reservation details:</div>',
-      '              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-size:13px;">',
-      '                <tr><td style="padding:5px 0;color:#5C636A;width:170px;font-weight:bold;">Reservation Reference:</td><td style="padding:5px 0;color:' + B.DARK_GREEN + ';font-weight:bold;">' + e(reservation.referenceNumber) + '</td></tr>',
-      '                <tr><td style="padding:5px 0;color:#5C636A;font-weight:bold;">Check-in:</td><td style="padding:5px 0;">' + e(checkInDisplay) + ' (' + e(checkInTime) + ')</td></tr>',
-      '                <tr><td style="padding:5px 0;color:#5C636A;font-weight:bold;">Check-out:</td><td style="padding:5px 0;">' + e(checkOutDisplay) + ' (' + e(checkOutTime) + ')</td></tr>',
-      '                <tr><td style="padding:5px 0;color:#5C636A;font-weight:bold;">Number of Guests:</td><td style="padding:5px 0;">' + e(String(reservation.numberOfGuests)) + '</td></tr>',
-      '                <tr><td style="padding:5px 0;color:#5C636A;font-weight:bold;">Number of Rooms:</td><td style="padding:5px 0;">' + e(reservation.numberOfRooms || 'Not Applicable') + '</td></tr>',
-      '              </table>',
-      '            </div>',
-      '            <p style="margin:0 0 10px 0;">Kindly present your endorsement certificate upon arrival for verification.</p>',
-      '            <p style="margin:0 0 18px 0;">If you have any questions or concerns, please contact us through our official contact details.</p>',
-      '            <div style="border-top:1px solid #E5DFD5;padding-top:14px;margin-top:16px;font-size:13px;">',
-      '              <div style="font-weight:bold;color:' + B.DARK_GREEN + ';margin-bottom:6px;">Official Contact Information</div>',
-      '              <table role="presentation" cellspacing="0" cellpadding="0" style="font-size:13px;">',
-      '                <tr><td style="padding:3px 0;color:#5C636A;">Contact Number:</td><td style="padding:3px 0 3px 10px;color:#2B2D2F;">' + e(settings.staycationContactNumber) + '</td></tr>',
-      '                <tr><td style="padding:3px 0;color:#5C636A;">Email:</td><td style="padding:3px 0 3px 10px;color:#2B2D2F;">' + e(settings.staycationEmailAddress) + '</td></tr>',
-      fbHtmlRow,
-      '              </table>',
-      '            </div>',
-      '            <p style="margin:18px 0 10px 0;">Thank you for choosing <strong>' + e(stayName) + '</strong>!</p>',
-      '            <p style="margin:0;">Best regards,<br><strong>' + e(stayName) + ' Management</strong></p>',
-      '          </td>',
-      '        </tr>',
-      '      </table>',
-      '    </td></tr>',
-      '  </table>',
+      '<body style="margin:0;padding:16px;background-color:#FFFFFF;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#222222;">',
+      '  <div style="max-width:640px;margin:0 auto;">',
+      '    <p style="margin:0 0 14px 0;">Dear PMO/Concierge,</p>',
+      '    <p style="margin:0 0 14px 0;">This is to confirm that I am allowing the following guests to stay at <strong>' +
+        e(unitLocation) + '</strong> from <strong>' + e(checkInShort) + ' (' + e(checkInTime) + ')</strong> to <strong>' +
+        e(checkOutShort) + ' (' + e(checkOutTime) + ')</strong>.</p>',
+      '    <div style="margin:0 0 14px 0;">',
+      '      <div style="font-weight:bold;margin-bottom:4px;">Guest(s):</div>',
+      '      <ul style="margin:0;padding-left:20px;">' + guestListHtml + '</ul>',
+      '      <div style="margin-top:6px;font-size:12.5px;color:#555555;">' +
+        'Reservation Reference: <strong>' + e(reservation.referenceNumber) + '</strong> &bull; ' +
+        'Stay Dates: ' + e(checkInDisplay) + ' to ' + e(checkOutDisplay) + ' &bull; ' +
+        'Guests: ' + e(String(reservation.numberOfGuests)) +
+      '</div>',
+      '    </div>',
+      '    <p style="margin:0 0 14px 0;">They will present their ids upon arrival for verification. Kindly assist them with check-in and grant access to the unit during their stay.</p>',
+      '    <p style="margin:0 0 14px 0;">If you require anything further, please let me know.</p>',
+      '    <p style="margin:0 0 12px 0;">Thank you.</p>',
+      inlineIdBlocks.join('\n'),
+      '    <div style="margin-top:20px;padding-top:12px;border-top:1px solid #E5E5E5;font-size:12px;color:#666666;">',
+      '      ' + footerContacts.join('<br>'),
+      '    </div>',
+      '  </div>',
       '</body></html>'
     ].join('\n');
 
@@ -260,15 +365,27 @@ var EmailService = (function () {
       return check;
     }
 
-    var rendered = renderEndorsementEmail(res, settings);
+    var idFiles = collectGuestIdFiles(res);
+    var rendered = renderEndorsementEmail(res, settings, idFiles, { useDataUriForPreview: true });
+    var recipients = resolveRecipients(res, settings);
+
+    var attachmentNames = [check.data.pdfFile.getName()];
+    for (var i = 0; i < idFiles.length; i++) {
+      attachmentNames.push(idFiles[i].fileName);
+    }
+
     return Utils.ok('Email preview ready.', {
       reservationId: res.reservationId,
       referenceNumber: res.referenceNumber,
       guestName: res.guestName,
-      recipientEmail: res.emailAddress,
+      recipientEmail: recipients.to,
+      ccEmail: recipients.cc,
+      isPmoRecipient: recipients.isPmoRecipient,
       subject: rendered.subject,
       htmlBody: rendered.htmlBody,
       pdfFileName: check.data.pdfFile.getName(),
+      attachmentNames: attachmentNames,
+      idFileCount: idFiles.length,
       // Always use canonical DriveApp URL (never trust manually editable sheet column R)
       pdfFileUrl: check.data.pdfFile.getUrl(),
       isRetryAfterFailure: isRetry,
@@ -277,24 +394,45 @@ var EmailService = (function () {
     });
   }
 
-  function resolveMailOptions(rendered, pdfBlob, settings) {
+  function resolveMailOptions(rendered, pdfBlob, idFiles, recipients, settings) {
     var safeSenderName = String(settings.staycationName || '')
       .replace(/[\r\n]+/g, ' ')
       .trim();
 
+    var attachments = [pdfBlob];
+    var inlineImages = {};
+    var hasInlineImages = false;
+
+    var list = Array.isArray(idFiles) ? idFiles : [];
+    for (var i = 0; i < list.length; i++) {
+      attachments.push(list[i].blob.copyBlob());
+      if (list[i].isImage && list[i].cid) {
+        inlineImages[list[i].cid] = list[i].blob.copyBlob();
+        hasInlineImages = true;
+      }
+    }
+
     var opts = {
       htmlBody: rendered.htmlBody,
-      attachments: [pdfBlob],
+      attachments: attachments,
       name: safeSenderName
     };
+
+    if (hasInlineImages) {
+      opts.inlineImages = inlineImages;
+    }
+
+    if (recipients && recipients.cc) {
+      opts.cc = recipients.cc;
+    }
 
     if (!Config.isUnconfiguredValue(settings.staycationEmailAddress)) {
       var stayEmail = Utils.normalizeEmail(settings.staycationEmailAddress);
       opts.replyTo = stayEmail;
       try {
         var aliases = GmailApp.getAliases() || [];
-        for (var i = 0; i < aliases.length; i++) {
-          if (Utils.normalizeEmail(aliases[i]) === stayEmail) {
+        for (var j = 0; j < aliases.length; j++) {
+          if (Utils.normalizeEmail(aliases[j]) === stayEmail) {
             opts.from = stayEmail;
             break;
           }
@@ -342,16 +480,21 @@ var EmailService = (function () {
       }
 
       var pdfFile = check.data.pdfFile;
-      var rendered = renderEndorsementEmail(res, settings);
+      var idFiles = collectGuestIdFiles(res);
+      var recipients = resolveRecipients(res, settings);
+      var rendered = renderEndorsementEmail(res, settings, idFiles, { useDataUriForPreview: false });
       var attemptedAt = Utils.formatTimestamp(new Date(), tz);
       var emailDispatched = false;
+      var recipientLogLabel = recipients.cc
+        ? (recipients.to + ' (CC: ' + recipients.cc + ')')
+        : recipients.to;
 
       try {
         var pdfBlob = pdfFile.getBlob();
-        var mailOptions = resolveMailOptions(rendered, pdfBlob, settings);
+        var mailOptions = resolveMailOptions(rendered, pdfBlob, idFiles, recipients, settings);
 
         // Execute Gmail send — Email Status MUST NOT become SENT until this returns without error
-        GmailApp.sendEmail(res.emailAddress, rendered.subject, rendered.plainBody, mailOptions);
+        GmailApp.sendEmail(recipients.to, rendered.subject, rendered.plainBody, mailOptions);
         emailDispatched = true;
       } catch (sendErr) {
         var rawErrMsg = sendErr && sendErr.message ? sendErr.message : String(sendErr);
@@ -359,7 +502,6 @@ var EmailService = (function () {
         var isQuotaErr = /too many times|quota|limit/i.test(rawErrMsg);
         var errCode = isQuotaErr ? Config.ERROR_CODES.QUOTA_EXCEEDED : Config.ERROR_CODES.EMAIL_SEND_FAILED;
 
-        // Preserve original reservation data; mark FAILED and log the error
         try {
           ReservationService.updateReservationFields(res.reservationId, {
             emailStatus: Config.EMAIL_STATUS.FAILED,
@@ -374,7 +516,7 @@ var EmailService = (function () {
           var failLog = EmailLogService.logEmailAttempt({
             reservationId: res.reservationId,
             referenceNumber: res.referenceNumber,
-            recipientEmail: res.emailAddress,
+            recipientEmail: recipientLogLabel,
             emailSubject: rendered.subject,
             emailStatus: Config.EMAIL_STATUS.FAILED,
             dateAttempted: attemptedAt,
@@ -403,14 +545,13 @@ var EmailService = (function () {
 
         return Utils.fail(
           errCode,
-          'Failed to send endorsement email to ' + res.emailAddress + ': ' + safeErrMsg,
+          'Failed to send endorsement email to ' + recipientLogLabel + ': ' + safeErrMsg,
           [safeErrMsg],
           { emailLogId: failLogId }
         );
       }
 
       // Post-dispatch recording: Gmail ALREADY accepted the email.
-      // Isolate each state/log write so a downstream logging error NEVER rolls back SENT to FAILED!
       var sentAt = Utils.formatTimestamp(new Date(), tz);
       var logId = '';
       var warnings = [];
@@ -419,7 +560,7 @@ var EmailService = (function () {
         var logEntry = EmailLogService.logEmailAttempt({
           reservationId: res.reservationId,
           referenceNumber: res.referenceNumber,
-          recipientEmail: res.emailAddress,
+          recipientEmail: recipientLogLabel,
           emailSubject: rendered.subject,
           emailStatus: Config.EMAIL_STATUS.SENT,
           dateAttempted: attemptedAt,
@@ -461,7 +602,9 @@ var EmailService = (function () {
           action: Config.ACTIVITY_ACTIONS.ENDORSEMENT_EMAIL_SENT,
           previousValue: res.emailStatus,
           newValue: Config.EMAIL_STATUS.SENT,
-          remarks: 'Endorsement email delivered to ' + res.emailAddress + ' with attachment ' + pdfFile.getName() +
+          remarks: 'Endorsement email delivered to ' + recipientLogLabel +
+            ' with attachment ' + pdfFile.getName() +
+            (idFiles.length > 0 ? (' + ' + idFiles.length + ' guest ID file(s)') : '') +
             (logId ? (' (Log: ' + logId + ')') : '')
         }, spreadsheet);
       } catch (postActErr) {
@@ -470,14 +613,17 @@ var EmailService = (function () {
       }
 
       return Utils.ok(
-        'Endorsement email sent successfully to ' + res.emailAddress + '!' +
+        'Endorsement email sent successfully to ' + recipientLogLabel + '!' +
           (warnings.length > 0 ? (' (Note: ' + warnings.join('; ') + ')') : ''),
         {
           emailDispatched: emailDispatched,
           reservation: updatedReservation,
           emailLogId: logId,
           sentAt: sentAt,
+          to: recipients.to,
+          cc: recipients.cc,
           attachmentName: pdfFile.getName(),
+          idFileCount: idFiles.length,
           warnings: warnings
         }
       );
@@ -485,6 +631,8 @@ var EmailService = (function () {
   }
 
   return Object.freeze({
+    resolveRecipients: resolveRecipients,
+    collectGuestIdFiles: collectGuestIdFiles,
     renderEndorsementEmail: renderEndorsementEmail,
     validateReadyToSend: validateReadyToSend,
     getEmailPreview: getEmailPreview,

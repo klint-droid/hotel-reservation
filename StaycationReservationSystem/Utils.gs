@@ -170,6 +170,24 @@ var Utils = (function () {
     return Utilities.formatDate(anchor, 'UTC', 'MMMM d, yyyy');
   }
 
+  /**
+   * Formats a date concisely as "Nov 20" for PMO/Concierge endorsement messages.
+   */
+  function formatShortDate(isoDateString, timezone) {
+    var canonical = parseCalendarDate(isoDateString, timezone);
+    if (!canonical) {
+      return String(isoDateString || '');
+    }
+    var parts = canonical.split('-');
+    var anchor = new Date(Date.UTC(
+      parseInt(parts[0], 10),
+      parseInt(parts[1], 10) - 1,
+      parseInt(parts[2], 10),
+      12, 0, 0
+    ));
+    return Utilities.formatDate(anchor, 'UTC', 'MMM d');
+  }
+
   function normalizeEmail(email) {
     if (email === null || email === undefined) {
       return '';
@@ -325,7 +343,9 @@ var Utils = (function () {
       checkInDate: parseCalendarDate(reservation.checkInDate, tz) || normalizeText(reservation.checkInDate),
       checkOutDate: parseCalendarDate(reservation.checkOutDate, tz) || normalizeText(reservation.checkOutDate),
       numberOfGuests: String(reservation.numberOfGuests === null || reservation.numberOfGuests === undefined ? '' : reservation.numberOfGuests).trim(),
-      numberOfRooms: normalizeText(reservation.numberOfRooms || 'Not Applicable')
+      numberOfRooms: normalizeText(reservation.numberOfRooms || 'Not Applicable'),
+      companionGuests: normalizeText(reservation.companionGuests || ''),
+      validIdFileIds: normalizeText(reservation.validIdFileIds || '')
     });
 
     var digestBytes = Utilities.computeDigest(
@@ -399,6 +419,27 @@ var Utils = (function () {
   }
 
   /**
+   * Extracts one or more unique Google Drive File IDs from comma/newline-separated
+   * Google Form File Upload URLs or arrays of IDs.
+   */
+  function extractDriveFileIds(input) {
+    if (input === null || input === undefined || input === '') {
+      return [];
+    }
+    var rawItems = Array.isArray(input) ? input : String(input).split(/[,\n;\s]+/);
+    var out = [];
+    var seen = {};
+    for (var i = 0; i < rawItems.length; i++) {
+      var id = extractDriveFileId(rawItems[i]);
+      if (id && !seen[id]) {
+        seen[id] = true;
+        out.push(id);
+      }
+    }
+    return out;
+  }
+
+  /**
    * Serializes an object to JSON safe for embedding inside HTML <script> tags
    * (prevents </script> breakout and HTML injection).
    */
@@ -424,6 +465,7 @@ var Utils = (function () {
     getTodayDateString: getTodayDateString,
     formatTimestamp: formatTimestamp,
     formatDisplayDate: formatDisplayDate,
+    formatShortDate: formatShortDate,
     normalizeEmail: normalizeEmail,
     normalizePhone: normalizePhone,
     normalizeText: normalizeText,
@@ -438,6 +480,7 @@ var Utils = (function () {
     computeEndorsedHash: computeEndorsedHash,
     withScriptLock: withScriptLock,
     extractDriveFileId: extractDriveFileId,
+    extractDriveFileIds: extractDriveFileIds,
     toSafeScriptJson: toSafeScriptJson
   });
 })();

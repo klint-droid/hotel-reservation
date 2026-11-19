@@ -43,9 +43,24 @@ var DocumentService = (function () {
       ? 'N/A'
       : settings.staycationFacebookPage;
 
+    var unitLoc = Config.isUnconfiguredValue(settings.unitLocation)
+      ? settings.staycationName
+      : settings.unitLocation;
+    var allGuestLines = [reservation.guestName];
+    if (reservation.companionGuests) {
+      var extra = String(reservation.companionGuests).split(/[\n,;]+/);
+      for (var g = 0; g < extra.length; g++) {
+        var gn = String(extra[g] || '').trim();
+        if (gn) allGuestLines.push(gn);
+      }
+    }
+
     var map = {};
     map[P.STAYCATION_NAME] = settings.staycationName;
+    map[P.UNIT_LOCATION] = unitLoc;
     map[P.GUEST_NAME] = reservation.guestName;
+    map[P.COMPANION_GUESTS] = reservation.companionGuests || 'None';
+    map[P.ALL_GUESTS] = allGuestLines.join(', ');
     map[P.REFERENCE_NUMBER] = reservation.referenceNumber;
     map[P.CHECK_IN_DATE] = Utils.formatDisplayDate(reservation.checkInDate, tz);
     map[P.CHECK_IN_TIME] = settings.checkInTime || '2:00 PM';

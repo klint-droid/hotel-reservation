@@ -100,6 +100,8 @@ var SetupService = (function () {
     widths[C.PDF_FILE_URL] = 220;
     widths[C.EMAIL_SENT_AT] = 165;
     widths[C.LAST_ERROR] = 260;
+    widths[C.COMPANION_GUESTS] = 220;
+    widths[C.VALID_ID_FILE_IDS] = 220;
 
     var colKeys = Object.keys(widths);
     for (var i = 0; i < colKeys.length; i++) {
@@ -119,10 +121,12 @@ var SetupService = (function () {
     sheet.getRange(2, C.APPROVED_AT, dataRows, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
     sheet.getRange(2, C.PDF_FILE_ID, dataRows, 1).setNumberFormat('@');
     sheet.getRange(2, C.EMAIL_SENT_AT, dataRows, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+    sheet.getRange(2, C.VALID_ID_FILE_IDS, dataRows, 1).setNumberFormat('@');
 
     sheet.getRange(2, C.SPECIAL_REQUESTS, dataRows, 1).setWrap(true);
     sheet.getRange(2, C.ADMIN_REMARKS, dataRows, 1).setWrap(true);
     sheet.getRange(2, C.LAST_ERROR, dataRows, 1).setWrap(true);
+    sheet.getRange(2, C.COMPANION_GUESTS, dataRows, 1).setWrap(true);
 
     // Dropdown validations
     var approvalValidation = SpreadsheetApp.newDataValidation()
@@ -431,13 +435,19 @@ var SetupService = (function () {
       .setChoiceValues(F.ROOM_OPTIONS.slice())
       .setRequired(false);
 
-    // 8. Special Requests (Paragraph, optional)
+    // 8. Companion / Other Guest Names (Paragraph, optional)
+    form.addParagraphTextItem()
+      .setTitle(F.FIELDS.COMPANION_GUESTS)
+      .setHelpText('List the full names of all other guests staying with you (one name per line), if applicable.')
+      .setRequired(false);
+
+    // 9. Special Requests (Paragraph, optional)
     form.addParagraphTextItem()
       .setTitle(F.FIELDS.SPECIAL_REQUESTS)
       .setHelpText('Optional notes, arrival preferences, or special requests.')
       .setRequired(false);
 
-    // 9. Agreement to House Rules (Checkbox, required)
+    // 10. Agreement to House Rules (Checkbox, required)
     form.addCheckboxItem()
       .setTitle(F.FIELDS.AGREEMENT)
       .setChoiceValues([F.AGREEMENT_LABEL])
@@ -732,13 +742,60 @@ var SetupService = (function () {
     });
   }
 
+  /**
+   * Non-destructive upgrade helper for existing deployments:
+   * - Adds Columns U (Companion Guests) and V (Valid ID File IDs) to Reservations
+   * - Adds UNIT_LOCATION and PMO_CONCIERGE_EMAIL rows to Settings
+   * - Adds the optional "Companion / Other Guest Names" field to the existing Google Form
+   *   (Note: Google Forms "File upload" for Valid ID Upload must be added once in the Form editor.)
+   */
+  function upgradeExistingWorkspace(ss) {
+    var spreadsheet = Config.getActiveSpreadsheetOrThrow(ss);
+    initializeSpreadsheet(spreadsheet);
+
+    var formUpdated = false;
+    var formEditUrl = '';
+    var existingFormId = PropertiesService.getScriptProperties().getProperty(Config.PROPERTY_PREFIXES.FORM_ID);
+    if (existingFormId) {
+      try {
+        var form = FormApp.openById(existingFormId);
+        formEditUrl = form.getEditUrl();
+        var items = form.getItems ? form.getItems() : [];
+        var hasCompanions = false;
+        var targetTitle = Config.FORM_CONFIG.FIELDS.COMPANION_GUESTS.toLowerCase();
+        for (var i = 0; i < items.length; i++) {
+          if (String(items[i].getTitle() || '').trim().toLowerCase() === targetTitle) {
+            hasCompanions = true;
+            break;
+          }
+        }
+        if (!hasCompanions) {
+          form.addParagraphTextItem()
+            .setTitle(Config.FORM_CONFIG.FIELDS.COMPANION_GUESTS)
+            .setHelpText('List the full names of all other guests staying with you (one name per line), if applicable.')
+            .setRequired(false);
+          formUpdated = true;
+        }
+      } catch (formErr) {
+        Logger.log('Note: Could not update linked Google Form automatically: ' + formErr);
+      }
+    }
+
+    return Utils.ok('Workspace upgraded for PMO/Concierge endorsements & Valid ID uploads.', {
+      formUpdated: formUpdated,
+      formEditUrl: formEditUrl,
+      manualFormStep: 'In the Google Form editor, click "+" -> File upload -> title it "Valid ID Upload" (Allow Image & PDF, max 5 files).'
+    });
+  }
+
   return Object.freeze({
     initializeSpreadsheet: initializeSpreadsheet,
     createRegistrationForm: createRegistrationForm,
     createPrivateOutputFolder: createPrivateOutputFolder,
     createEndorsementTemplateDoc: createEndorsementTemplateDoc,
     installTriggers: installTriggers,
-    runFullSetup: runFullSetup
+    runFullSetup: runFullSetup,
+    upgradeExistingWorkspace: upgradeExistingWorkspace
   });
 })();
 
@@ -755,4 +812,8 @@ function initializeSpreadsheet() {
 
 function installSystemTriggers() {
   return SetupService.installTriggers();
+}
+
+function upgradeExistingWorkspace() {
+  return SetupService.upgradeExistingWorkspace();
 }
